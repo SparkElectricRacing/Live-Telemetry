@@ -4,7 +4,7 @@ import plotly.graph_objs as go
 import plotly.express as px
 import pandas as pd
 import json
-import serial
+import requests 
 import threading
 import queue
 import time
@@ -13,8 +13,9 @@ import logging
 import os
 
 # Configuration
-SERIAL_PORT = 'COM3'  # Adjust for your system (Linux: '/dev/ttyUSB0', Mac: '/dev/cu.usbserial-*')
-BAUD_RATE = 9600
+API_ENDPOINT = 'http://localhost:5000/api/telemetry'  # Your API endpoint
+API_TIMEOUT = 2  # seconds
+API_POLL_RATE = 0.1  # seconds between API calls (10 Hz)
 LOG_DIRECTORY = 'telemetry_logs'
 UPDATE_INTERVAL = 100  # milliseconds
 
@@ -43,7 +44,7 @@ logging.basicConfig(
 class TelemetryReceiver:
     def __init__(self):
         self.data_queue = queue.Queue()
-        self.serial_connection = None
+        self.api_available = False
         self.running = False
         self.mock_mode = True  # Set to False when connecting to real hardware
         
@@ -59,17 +60,23 @@ class TelemetryReceiver:
             'inverter_temp': []
         }
         
-    def connect_serial(self):
-        """Connect to serial port for real hardware communication"""
+    def test_api_connection(self):
+        """Test if API endpoint is available"""
         try:
-            self.serial_connection = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
-            self.mock_mode = False
-            logging.info(f"Connected to serial port {SERIAL_PORT}")
-            return True
+            response = requests.get(API_ENDPOINT, timeout=API_TIMEOUT)
+            if response.status_code == 200:
+                self.api_available = True
+                self.mock_mode = False
+                logging.info(f"Connected to API at {API_ENDPOINT}")
+                return True
+            else:
+                logging.warning(f"API returned status code: {response.status_code}")
+                return False
         except Exception as e:
-            logging.warning(f"Failed to connect to serial port: {e}")
+            logging.warning(f"Failed to connect to API: {e}")
             logging.info("Running in mock mode")
             self.mock_mode = True
+            self.api_available = False
             return False
     
     def generate_mock_data(self):
@@ -88,6 +95,37 @@ class TelemetryReceiver:
             'inverter_temp': random.uniform(30, 80)  # °C
         }
         return data
+    
+    # ADD THIS NEW METHOD AFTER generate_mock_data():
+    def fetch_api_data(self):
+        """Fetch telemetry data from API"""
+        try:
+            response = requests.get(API_ENDPOINT, timeout=API_TIMEOUT)
+            response.raise_for_status()
+            
+            json_data = response.json()
+            
+            data = {
+                'timestamp': json_data.get('timestamp', datetime.now().isoformat()),
+                'vehicle_speed': float(json_data.get('vehicle_speed', 0)),
+                'battery_voltage': float(json_data.get('battery_voltage', 0)),
+                'battery_soc': float(json_data.get('battery_soc', 0)),
+                'min_cell_temp': float(json_data.get('min_cell_temp', 0)),
+                'max_cell_temp': float(json_data.get('max_cell_temp', 0)),
+                'inverter_temp': float(json_data.get('inverter_temp', 0))
+            }
+            
+            if not data['timestamp']:
+                data['timestamp'] = datetime.now().isoformat()
+            
+            return data
+            
+        except requests.exceptions.RequestException as e:
+            logging.error(f"API request failed: {e}")
+            return None
+        except (ValueError, KeyError) as e:
+            logging.error(f"Error parsing API response: {e}")
+            return None
     
     def parse_telemetry_packet(self, raw_data):
         """Parse incoming telemetry packet - customize based on your packet format"""
@@ -125,15 +163,15 @@ class TelemetryReceiver:
                 if self.mock_mode:
                     # Generate mock data
                     data = self.generate_mock_data()
-                    time.sleep(0.1)  # 10 Hz update rate
+                    time.sleep(API_POLL_RATE)
                 else:
-                    # Read from serial port
-                    if self.serial_connection and self.serial_connection.in_waiting:
-                        raw_data = self.serial_connection.readline().decode('utf-8')
-                        data = self.parse_telemetry_packet(raw_data)
-                        if data is None:
-                            continue
-                
+                    # Fetch from API
+                    data = self.fetch_api_data()
+                    if data is None:
+                        time.sleep(1)
+                        continue
+                    time.sleep(API_POLL_RATE)
+
                 # Add to queue and history
                 self.data_queue.put(data)
                 self.add_to_history(data)
@@ -164,7 +202,7 @@ class TelemetryReceiver:
     def start(self):
         """Start the telemetry receiver"""
         self.running = True
-        self.connect_serial()
+        self.test_api_connection()
         self.thread = threading.Thread(target=self.data_receiver_thread)
         self.thread.daemon = True
         self.thread.start()
@@ -173,8 +211,6 @@ class TelemetryReceiver:
     def stop(self):
         """Stop the telemetry receiver"""
         self.running = False
-        if self.serial_connection:
-            self.serial_connection.close()
         logging.info("Telemetry receiver stopped")
 
 # Initialize telemetry receiver
@@ -191,7 +227,7 @@ app.layout = html.Div([
         html.H1("Zephyrus Live Telemetry Dashboard", className="header-title"),
         html.Div([
             html.Div(id="connection-status", className="status-indicator"),
-            html.Div(f"Mode: {'Mock Data' if telemetry.mock_mode else 'Live Hardware'}", 
+            html.Div(f"Mode: {'Mock Data' if telemetry.mock_mode else 'Live API'}", 
                     className="mode-indicator")
         ], className="status-bar")
     ], className="header"),
