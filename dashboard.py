@@ -18,6 +18,15 @@ BAUD_RATE = 9600
 LOG_DIRECTORY = 'telemetry_logs'
 UPDATE_INTERVAL = 100  # milliseconds
 
+# Font Configuration - Change these to customize fonts throughout the dashboard
+PRIMARY_FONT = 'Arial, sans-serif'  # Main UI font (restored to original)
+CHART_FONT = 'Arial'  # Chart text font
+CHART_FONT_SIZE = 12
+TITLE_FONT_SIZE = 16
+
+# UI Configuration
+BORDER_RADIUS = 20  # Corner rounding for containers (px)
+
 # Ensure log directory exists
 os.makedirs(LOG_DIRECTORY, exist_ok=True)
 
@@ -282,7 +291,7 @@ def update_speed_gauge(data):
         margin=dict(l=20, r=20, t=40, b=20),
         plot_bgcolor='#1e2329',
         paper_bgcolor='#1e2329',
-        font=dict(color='#e8e8e8', size=12)
+        font=dict(color='#e8e8e8', size=CHART_FONT_SIZE, family=CHART_FONT)
     )
     return fig
 
@@ -314,7 +323,7 @@ def update_voltage_gauge(data):
         margin=dict(l=20, r=20, t=40, b=20),
         plot_bgcolor='#1e2329',
         paper_bgcolor='#1e2329',
-        font=dict(color='#e8e8e8', size=12)
+        font=dict(color='#e8e8e8', size=CHART_FONT_SIZE, family=CHART_FONT)
     )
     return fig
 
@@ -346,7 +355,7 @@ def update_soc_gauge(data):
         margin=dict(l=20, r=20, t=40, b=20),
         plot_bgcolor='#1e2329',
         paper_bgcolor='#1e2329',
-        font=dict(color='#e8e8e8', size=12)
+        font=dict(color='#e8e8e8', size=CHART_FONT_SIZE, family=CHART_FONT)
     )
     return fig
 
@@ -370,11 +379,11 @@ def update_temp_overview(data):
         marker_color=['#3498db', '#e74c3c', '#ffd700'],
         text=[f'{temp:.1f}°C' for temp in [current_min_temp, current_max_temp, current_inv_temp]],
         textposition='auto',
-        textfont=dict(color='#1e2329', size=12, family='Arial Black')
+        textfont=dict(color='#1e2329', size=CHART_FONT_SIZE, family=CHART_FONT)
     ))
     
     fig.update_layout(
-        title=dict(text="Current Temperatures", font=dict(color='#e8e8e8', size=16)),
+        title=dict(text="Current Temperatures", font=dict(color='#e8e8e8', size=TITLE_FONT_SIZE, family=CHART_FONT)),
         yaxis_title="Temperature (°C)",
         yaxis=dict(color='#e8e8e8', gridcolor='#34495e'),
         xaxis=dict(color='#e8e8e8'),
@@ -382,7 +391,7 @@ def update_temp_overview(data):
         margin=dict(l=20, r=20, t=40, b=20),
         plot_bgcolor='#1e2329',
         paper_bgcolor='#1e2329',
-        font=dict(color='#e8e8e8')
+        font=dict(color='#e8e8e8', family=CHART_FONT)
     )
     return fig
 
@@ -408,7 +417,7 @@ def update_speed_timeseries(data):
     ))
     
     fig.update_layout(
-        title=dict(text="Vehicle Speed Over Time", font=dict(color='#e8e8e8', size=16)),
+        title=dict(text="Vehicle Speed Over Time", font=dict(color='#e8e8e8', size=TITLE_FONT_SIZE, family=CHART_FONT)),
         xaxis_title="Time",
         yaxis_title="Speed (km/h)",
         xaxis=dict(color='#e8e8e8', gridcolor='#34495e'),
@@ -417,8 +426,8 @@ def update_speed_timeseries(data):
         margin=dict(l=40, r=20, t=40, b=40),
         plot_bgcolor='#1e2329',
         paper_bgcolor='#1e2329',
-        font=dict(color='#e8e8e8'),
-        legend=dict(font=dict(color='#e8e8e8'))
+        font=dict(color='#e8e8e8', family=CHART_FONT),
+        legend=dict(font=dict(color='#e8e8e8', family=CHART_FONT))
     )
     return fig
 
@@ -455,7 +464,7 @@ def update_battery_timeseries(data):
     ))
     
     fig.update_layout(
-        title=dict(text="Battery Parameters Over Time", font=dict(color='#e8e8e8', size=16)),
+        title=dict(text="Battery Parameters Over Time", font=dict(color='#e8e8e8', size=TITLE_FONT_SIZE, family=CHART_FONT)),
         xaxis_title="Time",
         yaxis=dict(title="Voltage (V)", side="left", color='#e8e8e8', gridcolor='#34495e'),
         yaxis2=dict(title="SOC (%)", side="right", overlaying="y", color='#e8e8e8'),
@@ -464,8 +473,8 @@ def update_battery_timeseries(data):
         margin=dict(l=40, r=40, t=40, b=40),
         plot_bgcolor='#1e2329',
         paper_bgcolor='#1e2329',
-        font=dict(color='#e8e8e8'),
-        legend=dict(font=dict(color='#e8e8e8'))
+        font=dict(color='#e8e8e8', family=CHART_FONT),
+        legend=dict(font=dict(color='#e8e8e8', family=CHART_FONT))
     )
     return fig
 
@@ -509,7 +518,7 @@ def update_temperature_timeseries(data):
     ))
     
     fig.update_layout(
-        title=dict(text="Temperature Monitoring Over Time", font=dict(color='#e8e8e8', size=16)),
+        title=dict(text="Temperature Monitoring Over Time", font=dict(color='#e8e8e8', size=TITLE_FONT_SIZE, family=CHART_FONT)),
         xaxis_title="Time",
         yaxis_title="Temperature (°C)",
         xaxis=dict(color='#e8e8e8', gridcolor='#34495e'),
@@ -518,8 +527,8 @@ def update_temperature_timeseries(data):
         margin=dict(l=40, r=20, t=40, b=40),
         plot_bgcolor='#1e2329',
         paper_bgcolor='#1e2329',
-        font=dict(color='#e8e8e8'),
-        legend=dict(font=dict(color='#e8e8e8'))
+        font=dict(color='#e8e8e8', family=CHART_FONT),
+        legend=dict(font=dict(color='#e8e8e8', family=CHART_FONT))
     )
     return fig
 
@@ -534,7 +543,7 @@ app.index_string = '''
         {%css%}
         <style>
             body {
-                font-family: 'Arial', sans-serif;
+                font-family: ''' + PRIMARY_FONT + ''';
                 margin: 0;
                 padding: 0;
                 background-color: #0f1419;
@@ -549,7 +558,7 @@ app.index_string = '''
                 background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
                 color: #e8e8e8;
                 padding: 20px;
-                border-radius: 15px;
+                border-radius: ''' + str(BORDER_RADIUS) + '''px;
                 margin-bottom: 20px;
                 border: 1px solid #ffd700;
                 box-shadow: 0 4px 20px rgba(255, 215, 0, 0.1);
@@ -583,7 +592,7 @@ app.index_string = '''
             .gauge-container {
                 flex: 1;
                 background: #1e2329;
-                border-radius: 15px;
+                border-radius: ''' + str(BORDER_RADIUS) + '''px;
                 box-shadow: 0 4px 15px rgba(0,0,0,0.3);
                 border: 1px solid #2c3e50;
                 transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -595,7 +604,7 @@ app.index_string = '''
             .chart-container {
                 flex: 1;
                 background: #1e2329;
-                border-radius: 15px;
+                border-radius: ''' + str(BORDER_RADIUS) + '''px;
                 box-shadow: 0 4px 15px rgba(0,0,0,0.3);
                 border: 1px solid #2c3e50;
                 transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -607,7 +616,7 @@ app.index_string = '''
             .chart-container-full {
                 width: 100%;
                 background: #1e2329;
-                border-radius: 15px;
+                border-radius: ''' + str(BORDER_RADIUS) + '''px;
                 box-shadow: 0 4px 15px rgba(0,0,0,0.3);
                 border: 1px solid #2c3e50;
                 transition: transform 0.2s ease, box-shadow 0.2s ease;
