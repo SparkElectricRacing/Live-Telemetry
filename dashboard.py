@@ -30,6 +30,9 @@ BORDER_RADIUS = 20  # Corner rounding for containers (px)
 # Ensure log directory exists
 os.makedirs(LOG_DIRECTORY, exist_ok=True)
 
+# Make a list of all log files within the directory
+available_logs = [file for file in os.listdir(LOG_DIRECTORY) if file.endswith('.log')]
+
 # Set up logging
 logging.basicConfig(
     level=logging.INFO,
@@ -241,6 +244,17 @@ app.layout = html.Div([
         interval=UPDATE_INTERVAL,
         n_intervals=0
     ),
+
+    # The Dropdown component is populated with the log file names
+    dcc.Dropdown(
+        id='log-dropdown',
+        options=[{'label': log_name, 'value': log_name} for log_name in available_logs],
+        # You can set an initial value if you want
+        # value=available_logs[0] 
+    ),
+
+    # The Graph component will be updated by the callback
+    dcc.Graph(id='telemetry-graph')
     
     # Store component for data
     dcc.Store(id='telemetry-store')
@@ -531,6 +545,33 @@ def update_temperature_timeseries(data):
         legend=dict(font=dict(color='#e8e8e8', family=CHART_FONT))
     )
     return fig
+
+@app.callback(
+    Output('telemetry-graph', 'figure'),
+    Input('log-dropdown', 'value')
+)
+def update_graph(selected_log_file):
+    # This function is triggered whenever the dropdown value changes
+
+    # If no log file is selected, return an empty graph
+    if selected_log_file is None:
+        return {}
+
+    # Construct the full path to the selected log file
+    file_path = os.path.join(LOG_DIRECTORY, selected_log_file)
+
+    try:
+        # TODO: Read in log data with pandas
+        # Read the log data using pandas
+        # The below doesn't work because log files aren't stored as '.csv'
+        df = pd.read_csv(file_path)
+
+        # TODO: Create charts based on the data from a log file
+    
+    except Exception as e:
+        # Handle cases where the file might be empty or corrupt
+        print(f"Error reading file {selected_log_file}: {e}")
+        return {} # Return an empty figure on error
 
 # Add custom CSS
 app.index_string = '''
