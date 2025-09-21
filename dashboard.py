@@ -277,7 +277,13 @@ def update_speed_gauge(data):
                 'threshold': {'line': {'color': "red", 'width': 4},
                              'thickness': 0.75, 'value': 120}}))
     
-    fig.update_layout(height=300, margin=dict(l=20, r=20, t=40, b=20))
+    fig.update_layout(
+        height=300, 
+        margin=dict(l=20, r=20, t=40, b=20),
+        plot_bgcolor='#1e2329',
+        paper_bgcolor='#1e2329',
+        font=dict(color='#e8e8e8', size=12)
+    )
     return fig
 
 @app.callback(
@@ -295,15 +301,21 @@ def update_voltage_gauge(data):
         title = {'text': "Battery Voltage (V)"},
         delta = {'reference': data['battery_voltage'][-2] if len(data['battery_voltage']) > 1 else current_voltage},
         gauge = {'axis': {'range': [300, 420]},
-                'bar': {'color': "green"},
+                'bar': {'color': "#27ae60"},
                 'steps': [
-                    {'range': [300, 340], 'color': "red"},
-                    {'range': [340, 380], 'color': "yellow"},
-                    {'range': [380, 420], 'color': "lightgreen"}],
-                'threshold': {'line': {'color': "red", 'width': 4},
+                    {'range': [300, 340], 'color': "#e74c3c"},
+                    {'range': [340, 380], 'color': "#f39c12"},
+                    {'range': [380, 420], 'color': "#2c3e50"}],
+                'threshold': {'line': {'color': "#e74c3c", 'width': 4},
                              'thickness': 0.75, 'value': 320}}))
     
-    fig.update_layout(height=300, margin=dict(l=20, r=20, t=40, b=20))
+    fig.update_layout(
+        height=300, 
+        margin=dict(l=20, r=20, t=40, b=20),
+        plot_bgcolor='#1e2329',
+        paper_bgcolor='#1e2329',
+        font=dict(color='#e8e8e8', size=12)
+    )
     return fig
 
 @app.callback(
@@ -321,15 +333,21 @@ def update_soc_gauge(data):
         title = {'text': "Battery SOC (%)"},
         delta = {'reference': data['battery_soc'][-2] if len(data['battery_soc']) > 1 else current_soc},
         gauge = {'axis': {'range': [0, 100]},
-                'bar': {'color': "orange"},
+                'bar': {'color': "#ffd700"},
                 'steps': [
-                    {'range': [0, 20], 'color': "red"},
-                    {'range': [20, 50], 'color': "yellow"},
-                    {'range': [50, 100], 'color': "lightgreen"}],
-                'threshold': {'line': {'color': "red", 'width': 4},
+                    {'range': [0, 20], 'color': "#e74c3c"},
+                    {'range': [20, 50], 'color': "#f39c12"},
+                    {'range': [50, 100], 'color': "#2c3e50"}],
+                'threshold': {'line': {'color': "#e74c3c", 'width': 4},
                              'thickness': 0.75, 'value': 15}}))
     
-    fig.update_layout(height=300, margin=dict(l=20, r=20, t=40, b=20))
+    fig.update_layout(
+        height=300, 
+        margin=dict(l=20, r=20, t=40, b=20),
+        plot_bgcolor='#1e2329',
+        paper_bgcolor='#1e2329',
+        font=dict(color='#e8e8e8', size=12)
+    )
     return fig
 
 @app.callback(
@@ -349,16 +367,22 @@ def update_temp_overview(data):
     fig.add_trace(go.Bar(
         x=['Min Cell', 'Max Cell', 'Inverter'],
         y=[current_min_temp, current_max_temp, current_inv_temp],
-        marker_color=['blue', 'red', 'orange'],
+        marker_color=['#3498db', '#e74c3c', '#ffd700'],
         text=[f'{temp:.1f}°C' for temp in [current_min_temp, current_max_temp, current_inv_temp]],
         textposition='auto',
+        textfont=dict(color='#1e2329', size=12, family='Arial Black')
     ))
     
     fig.update_layout(
-        title="Current Temperatures",
+        title=dict(text="Current Temperatures", font=dict(color='#e8e8e8', size=16)),
         yaxis_title="Temperature (°C)",
+        yaxis=dict(color='#e8e8e8', gridcolor='#34495e'),
+        xaxis=dict(color='#e8e8e8'),
         height=300,
-        margin=dict(l=20, r=20, t=40, b=20)
+        margin=dict(l=20, r=20, t=40, b=20),
+        plot_bgcolor='#1e2329',
+        paper_bgcolor='#1e2329',
+        font=dict(color='#e8e8e8')
     )
     return fig
 
@@ -379,15 +403,22 @@ def update_speed_timeseries(data):
         y=data['vehicle_speed'],
         mode='lines+markers',
         name='Vehicle Speed',
-        line=dict(color='blue', width=2)
+        line=dict(color='#ffd700', width=3),
+        marker=dict(color='#ffd700', size=4)
     ))
     
     fig.update_layout(
-        title="Vehicle Speed Over Time",
+        title=dict(text="Vehicle Speed Over Time", font=dict(color='#e8e8e8', size=16)),
         xaxis_title="Time",
         yaxis_title="Speed (km/h)",
+        xaxis=dict(color='#e8e8e8', gridcolor='#34495e'),
+        yaxis=dict(color='#e8e8e8', gridcolor='#34495e'),
         height=300,
-        margin=dict(l=40, r=20, t=40, b=40)
+        margin=dict(l=40, r=20, t=40, b=40),
+        plot_bgcolor='#1e2329',
+        paper_bgcolor='#1e2329',
+        font=dict(color='#e8e8e8'),
+        legend=dict(font=dict(color='#e8e8e8'))
     )
     return fig
 
@@ -409,7 +440,8 @@ def update_battery_timeseries(data):
         mode='lines+markers',
         name='Voltage (V)',
         yaxis='y',
-        line=dict(color='green', width=2)
+        line=dict(color='#27ae60', width=3),
+        marker=dict(color='#27ae60', size=4)
     ))
     
     fig.add_trace(go.Scatter(
@@ -418,16 +450,22 @@ def update_battery_timeseries(data):
         mode='lines+markers',
         name='SOC (%)',
         yaxis='y2',
-        line=dict(color='orange', width=2)
+        line=dict(color='#ffd700', width=3),
+        marker=dict(color='#ffd700', size=4)
     ))
     
     fig.update_layout(
-        title="Battery Parameters Over Time",
+        title=dict(text="Battery Parameters Over Time", font=dict(color='#e8e8e8', size=16)),
         xaxis_title="Time",
-        yaxis=dict(title="Voltage (V)", side="left"),
-        yaxis2=dict(title="SOC (%)", side="right", overlaying="y"),
+        yaxis=dict(title="Voltage (V)", side="left", color='#e8e8e8', gridcolor='#34495e'),
+        yaxis2=dict(title="SOC (%)", side="right", overlaying="y", color='#e8e8e8'),
+        xaxis=dict(color='#e8e8e8', gridcolor='#34495e'),
         height=300,
-        margin=dict(l=40, r=40, t=40, b=40)
+        margin=dict(l=40, r=40, t=40, b=40),
+        plot_bgcolor='#1e2329',
+        paper_bgcolor='#1e2329',
+        font=dict(color='#e8e8e8'),
+        legend=dict(font=dict(color='#e8e8e8'))
     )
     return fig
 
@@ -448,7 +486,8 @@ def update_temperature_timeseries(data):
         y=data['min_cell_temp'],
         mode='lines+markers',
         name='Min Cell Temp',
-        line=dict(color='blue', width=2)
+        line=dict(color='#3498db', width=3),
+        marker=dict(color='#3498db', size=4)
     ))
     
     fig.add_trace(go.Scatter(
@@ -456,7 +495,8 @@ def update_temperature_timeseries(data):
         y=data['max_cell_temp'],
         mode='lines+markers',
         name='Max Cell Temp',
-        line=dict(color='red', width=2)
+        line=dict(color='#e74c3c', width=3),
+        marker=dict(color='#e74c3c', size=4)
     ))
     
     fig.add_trace(go.Scatter(
@@ -464,15 +504,22 @@ def update_temperature_timeseries(data):
         y=data['inverter_temp'],
         mode='lines+markers',
         name='Inverter Temp',
-        line=dict(color='orange', width=2)
+        line=dict(color='#ffd700', width=3),
+        marker=dict(color='#ffd700', size=4)
     ))
     
     fig.update_layout(
-        title="Temperature Monitoring Over Time",
+        title=dict(text="Temperature Monitoring Over Time", font=dict(color='#e8e8e8', size=16)),
         xaxis_title="Time",
         yaxis_title="Temperature (°C)",
+        xaxis=dict(color='#e8e8e8', gridcolor='#34495e'),
+        yaxis=dict(color='#e8e8e8', gridcolor='#34495e'),
         height=300,
-        margin=dict(l=40, r=20, t=40, b=40)
+        margin=dict(l=40, r=20, t=40, b=40),
+        plot_bgcolor='#1e2329',
+        paper_bgcolor='#1e2329',
+        font=dict(color='#e8e8e8'),
+        legend=dict(font=dict(color='#e8e8e8'))
     )
     return fig
 
@@ -490,7 +537,8 @@ app.index_string = '''
                 font-family: 'Arial', sans-serif;
                 margin: 0;
                 padding: 0;
-                background-color: #f5f5f5;
+                background-color: #0f1419;
+                color: #e8e8e8;
             }
             .main-container {
                 max-width: 1400px;
@@ -498,21 +546,34 @@ app.index_string = '''
                 padding: 20px;
             }
             .header {
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                color: white;
+                background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+                color: #e8e8e8;
                 padding: 20px;
-                border-radius: 10px;
+                border-radius: 15px;
                 margin-bottom: 20px;
+                border: 1px solid #ffd700;
+                box-shadow: 0 4px 20px rgba(255, 215, 0, 0.1);
             }
             .header-title {
                 margin: 0;
                 font-size: 2.5em;
                 text-align: center;
+                color: #ffd700;
+                text-shadow: 0 2px 4px rgba(0,0,0,0.5);
             }
             .status-bar {
                 display: flex;
                 justify-content: space-between;
-                margin-top: 10px;
+                margin-top: 15px;
+                font-size: 1.1em;
+            }
+            .status-indicator {
+                color: #ffd700;
+                font-weight: bold;
+            }
+            .mode-indicator {
+                color: #e8e8e8;
+                font-weight: 500;
             }
             .gauge-row, .mixed-row, .chart-row {
                 display: flex;
@@ -521,21 +582,46 @@ app.index_string = '''
             }
             .gauge-container {
                 flex: 1;
-                background: white;
-                border-radius: 10px;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                background: #1e2329;
+                border-radius: 15px;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+                border: 1px solid #2c3e50;
+                transition: transform 0.2s ease, box-shadow 0.2s ease;
+            }
+            .gauge-container:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 6px 20px rgba(255, 215, 0, 0.15);
             }
             .chart-container {
                 flex: 1;
-                background: white;
-                border-radius: 10px;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                background: #1e2329;
+                border-radius: 15px;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+                border: 1px solid #2c3e50;
+                transition: transform 0.2s ease, box-shadow 0.2s ease;
+            }
+            .chart-container:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 6px 20px rgba(255, 215, 0, 0.15);
             }
             .chart-container-full {
                 width: 100%;
-                background: white;
-                border-radius: 10px;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                background: #1e2329;
+                border-radius: 15px;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+                border: 1px solid #2c3e50;
+                transition: transform 0.2s ease, box-shadow 0.2s ease;
+            }
+            .chart-container-full:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 6px 20px rgba(255, 215, 0, 0.15);
+            }
+            /* Dark theme for plotly charts */
+            .js-plotly-plot .plotly .modebar {
+                background-color: #2c3e50 !important;
+            }
+            .js-plotly-plot .plotly .modebar-btn {
+                color: #e8e8e8 !important;
             }
         </style>
     </head>
