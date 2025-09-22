@@ -1,4 +1,6 @@
 import serial # pyserial
+import time
+import global_vars as gv
 
 def parse_in(inp):
     if type(inp) == bytes:
@@ -26,10 +28,12 @@ def parse_in(inp):
 # print(p)
 
 def read_bin_file(file):
+    data
     with open(file, 'rb') as f:
         for line in f:
             dev_addr, typ, time, data, p = parse_in(line)
             print(dev_addr, typ, time, data, p)
+            row = [dev_addr, typ, time, data, p]
     return
 
 def read_from_arduino(port_name, baud_rate):
@@ -47,5 +51,18 @@ def read_from_arduino(port_name, baud_rate):
                 continue
     return
 
+def read_from_arduino_v2(port_name, baud_rate):
+    ser = serial.Serial(port_name, baud_rate, timeout = 1)
+    time.sleep(2)
+    while True:
+        while ser.in_waiting > 0:
+            line = ser.readline().decode('utf-8').rstrip()
+            dev_addr, typ, time, data, p = parse_in(line)
+            entry = [dev_addr, typ, time, data, p]
+            gv.buffer.put(entry)
+        time.sleep(0.1)
+    # Add error checks for port etc
+
 # def __main__():
+
 read_bin_file("output.bin")
