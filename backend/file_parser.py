@@ -1,6 +1,6 @@
 import serial # pyserial
 import time
-import global_vars as gv
+import backend.global_vars as gv
 
 def parse_in(inp):
     if type(inp) == bytes:
