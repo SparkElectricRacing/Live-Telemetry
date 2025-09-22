@@ -1,0 +1,86 @@
+:root {
+    --primary-font: Arial, sans-serif; /* Replace with PRIMARY_FONT */
+    --chart-font: Arial;               /* Replace with CHART_FONT */
+    --chart-font-size: 12px;           /* Replace with CHART_FONT_SIZE */
+    --title-font-size: 16px;           /* Replace with TITLE_FONT_SIZE */
+    --border-radius: 20px;             /* Replace with BORDER_RADIUS */
+    --background-color: #0f1419;
+    --container-bg: #1e2329;
+    --header-bg-gradient: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    --primary-color: #ffd700;
+    --text-color: #e8e8e8;
+}
+
+body {
+    font-family: var(--primary-font);
+    margin: 0;
+    padding: 0;
+    background-color: var(--background-color);
+    color: var(--text-color);
+}
+
+.main-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.header {
+    background: var(--header-bg-gradient);
+    color: var(--text-color);
+    padding: 20px;
+    border-radius: var(--border-radius);
+    margin-bottom: 20px;
+    border: 1px solid var(--primary-color);
+    box-shadow: 0 4px 20px rgba(255, 215, 0, 0.1);
+}
+
+.header-title {
+    margin: 0;
+    font-size: var(--title-font-size);
+    text-align: center;
+    color: var(--primary-color);
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
+/* Containers */
+.gauge-container, .chart-container, .chart-container-full {
+    flex: 1;
+    background: var(--container-bg);
+    border-radius: var(--border-radius);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    border: 1px solid #2c3e50;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.gauge-container:hover, .chart-container:hover, .chart-container-full:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 215, 0, 0.15);
+}
+
+/* Status Bar */
+.status-bar {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 15px;
+    font-size: 1.1em;
+}
+
+.status-indicator {
+    color: var(--primary-color);
+    font-weight: bold;
+}
+
+.mode-indicator {
+    color: var(--text-color);
+    font-weight: 500;
+}
+
+/* Dark theme for Plotly charts */
+.js-plotly-plot .plotly .modebar {
+    background-color: #2c3e50 !important;
+}
+
+.js-plotly-plot .plotly .modebar-btn {
+    color: var(--text-color) !important;
+}
