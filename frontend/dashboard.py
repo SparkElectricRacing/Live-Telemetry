@@ -17,9 +17,9 @@ import pathlib
 # Configuration
 API_ENDPOINT = 'http://localhost:5000/api/telemetry'  # Your API endpoint
 API_TIMEOUT = 2  # seconds
-API_POLL_RATE = 1  # seconds between API calls (10 Hz)
+API_POLL_RATE = 0.05  # seconds between API calls (2 Hz)
 LOG_DIRECTORY = 'telemetry_logs'
-UPDATE_INTERVAL = 100  # milliseconds
+UPDATE_INTERVAL = 50  # milliseconds (2 Hz)
 
 CHART_FONT = 'Arial'
 CHART_FONT_SIZE = 12
@@ -313,23 +313,45 @@ def update_telemetry_store(n, existing_data):
     updated_data = existing_data.copy()
     
     # Pull all available data from the queue
+    new_data_points = []
     while not telemetry.data_queue.empty():
         try:
             data_point = telemetry.data_queue.get_nowait()
-            
-            # Append new data
-            for key, value in data_point.items():
-                if key in updated_data:
-                    updated_data[key].append(value)
-
-            # Trim the data to MAX_POINTS
-            for key in updated_data:
-                updated_data[key] = updated_data[key][-MAX_POINTS:]
-
+            new_data_points.append(data_point)
         except queue.Empty:
-            break # Should not happen with the while loop condition but good for safety
+            break
+    
+    # Process all new data points at once
+    for data_point in new_data_points:
+        # Append new data
+        for key, value in data_point.items():
+            if key in updated_data:
+                updated_data[key].append(value)
+
+    # Trim the data to MAX_POINTS (only do this once after processing all new data)
+    if new_data_points:  # Only trim if we actually added new data
+        for key in updated_data:
+            updated_data[key] = updated_data[key][-MAX_POINTS:]
+        logging.info(f"Processed {len(new_data_points)} new data points")
             
     return updated_data
+
+@app.callback(
+    Output('connection-status', 'children'),
+    Input('telemetry-store', 'data')
+)
+def update_connection_status(data):
+    """Update connection status indicator"""
+    if data and data['timestamp']:
+        latest_time = datetime.fromisoformat(data['timestamp'][-1])
+        time_diff = (datetime.now() - latest_time).total_seconds()
+        
+        if time_diff < 2:  # Data is fresh (less than 2 seconds old)
+            return "🟢 Live Data"
+        else:
+            return f"🟡 Stale Data ({time_diff:.1f}s old)"
+    else:
+        return "🔴 No Data"
 
 @app.callback(
     Output('speed-gauge', 'figure'),
