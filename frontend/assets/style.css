@@ -84,3 +84,41 @@ body {
 .js-plotly-plot .plotly .modebar-btn {
     color: var(--text-color) !important;
 }
+
+/* Add this to the end of your style.css file */
+
+/* Make sure the parent container is set to relative positioning */
+.gauge-container {
+    position: relative;
+}
+
+/* Base style for the status indicator tag inside a gauge */
+.gauge-container .status-indicator {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 10;
+    padding: 5px 15px;
+    color: white; 
+    font-weight: bold;
+    font-size: 0.9em;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+
+    /* This is the key property for rounding the corners */
+    border-radius: 15px;
+}
+
+/* --- Color classes for the indicator --- */
+
+.status-good { 
+    background-color: #28a745; /* Green */
+}
+
+.status-caution { 
+    background-color: #ffc107; /* Yellow */
+    color: #1f2937; /* Darker text for better contrast */
+}
+
+.status-warning { 
+    background-color: #dc3545; /* Red */
+}

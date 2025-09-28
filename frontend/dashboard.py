@@ -107,7 +107,6 @@ class TelemetryReceiver:
         }
         return data
     
-    # ADD THIS NEW METHOD AFTER generate_mock_data():
     def fetch_api_data(self):
         """Fetch telemetry data from API"""
         try:
@@ -226,7 +225,7 @@ telemetry = TelemetryReceiver()
 telemetry.start()
 
 # Initialize Dash app
-app = dash.Dash(__name__)
+app = dash.Dash(__name__, suppress_callback_exceptions=True)
 app.title = "Zephyrus Live Telemetry"
 
 template_path = str(pathlib.Path(__file__).parent / "templates" / "index.html")
@@ -253,6 +252,7 @@ app.layout = html.Div([
             ], className="gauge-container"),
             html.Div([
                 dcc.Graph(id="voltage-gauge"),
+                html.Div(id="voltage-status-indicator") 
             ], className="gauge-container"),
         ], className="gauge-row"),
         
@@ -260,8 +260,13 @@ app.layout = html.Div([
         html.Div([
             html.Div([
                 dcc.Graph(id="soc-gauge"),
+                html.Div(id="soc-status-indicator")
             ], className="gauge-container"),
+            # MODIFIED: Added a container and a button for toggling the view
             html.Div([
+                html.Div([
+                    html.Button("Switch to Time Series", id='toggle-temp-chart-btn', n_clicks=0)
+                ], className="chart-header"),
                 dcc.Graph(id="temp-overview"),
             ], className="chart-container"),
         ], className="mixed-row"),
@@ -283,14 +288,7 @@ app.layout = html.Div([
         ], className="chart-row"),
     ], className="dashboard-content"),
     
-    # Auto-refresh component
-    dcc.Interval(
-        id='interval-component',
-        interval=UPDATE_INTERVAL,
-        n_intervals=0
-    ),
-    
-    # Store component for data
+    dcc.Interval(id='interval-component', interval=UPDATE_INTERVAL, n_intervals=0),
     dcc.Store(id='telemetry-store')
 ], className="main-container")
 
@@ -298,21 +296,12 @@ app.layout = html.Div([
 @app.callback(
     Output('telemetry-store', 'data'),
     Input('interval-component', 'n_intervals'),
-    State('telemetry-store', 'data')  # Get the current state of the data
+    State('telemetry-store', 'data')
 )
 def update_telemetry_store(n, existing_data):
-    """
-    Pull data from the queue and update the store.
-    This is the new, robust way to handle state.
-    """
-    # On first run, initialize the data store
     if existing_data is None:
         return initial_data
-
-    # Create a copy to modify
     updated_data = existing_data.copy()
-    
-    # Pull all available data from the queue
     new_data_points = []
     while not telemetry.data_queue.empty():
         try:
@@ -320,20 +309,13 @@ def update_telemetry_store(n, existing_data):
             new_data_points.append(data_point)
         except queue.Empty:
             break
-    
-    # Process all new data points at once
     for data_point in new_data_points:
-        # Append new data
         for key, value in data_point.items():
             if key in updated_data:
                 updated_data[key].append(value)
-
-    # Trim the data to MAX_POINTS (only do this once after processing all new data)
-    if new_data_points:  # Only trim if we actually added new data
+    if new_data_points:
         for key in updated_data:
             updated_data[key] = updated_data[key][-MAX_POINTS:]
-        logging.info(f"Processed {len(new_data_points)} new data points")
-            
     return updated_data
 
 @app.callback(
@@ -341,48 +323,123 @@ def update_telemetry_store(n, existing_data):
     Input('telemetry-store', 'data')
 )
 def update_connection_status(data):
-    """Update connection status indicator"""
     if data and data['timestamp']:
         latest_time = datetime.fromisoformat(data['timestamp'][-1])
         time_diff = (datetime.now() - latest_time).total_seconds()
-        
-        if time_diff < 2:  # Data is fresh (less than 2 seconds old)
+        if time_diff < 2:
             return "🟢 Live Data"
         else:
             return f"🟡 Stale Data ({time_diff:.1f}s old)"
+    return "🔴 No Data"
+        
+@app.callback(
+    Output('voltage-status-indicator', 'children'),
+    Output('voltage-status-indicator', 'className'),
+    Output('soc-status-indicator', 'children'),
+    Output('soc-status-indicator', 'className'),
+    Input('telemetry-store', 'data')
+)
+def update_status_indicators(data):
+    if not data or not data['timestamp'] or not data['battery_voltage']:
+        return dash.no_update
+    voltage = data['battery_voltage'][-1]
+    if voltage >= 380: v_status, v_class = "OK", "status-good"
+    elif voltage >= 340: v_status, v_class = "Caution", "status-caution"
+    else: v_status, v_class = "Warning", "status-warning"
+    v_text = f"Voltage: {v_status}"
+    v_classname = f"status-indicator {v_class}"
+    soc = data['battery_soc'][-1]
+    if soc >= 50: s_status, s_class = "OK", "status-good"
+    elif soc >= 20: s_status, s_class = "Caution", "status-caution"
+    else: s_status, s_class = "Warning", "status-warning"
+    s_text = f"SOC: {s_status}"
+    s_classname = f"status-indicator {s_class}"
+    return v_text, v_classname, s_text, s_classname
+
+@app.callback(
+    Output('temp-overview', 'figure'),
+    Output('toggle-temp-chart-btn', 'children'),
+    Input('telemetry-store', 'data'),
+    Input('toggle-temp-chart-btn', 'n_clicks')
+)
+def update_temp_overview(data, n_clicks):
+    if n_clicks is None:
+        n_clicks = 0
+
+    if n_clicks % 2 == 1:
+        button_text = "Switch to Current Values"
+        if not data['timestamp']:
+            return go.Figure(), button_text
+        
+        timestamps = [datetime.fromisoformat(t) for t in data['timestamp']]
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=timestamps, y=data['min_cell_temp'], mode='lines', name='Min Cell', line=dict(color='#3498db')))
+        fig.add_trace(go.Scatter(x=timestamps, y=data['max_cell_temp'], mode='lines', name='Max Cell', line=dict(color='#e74c3c')))
+        fig.add_trace(go.Scatter(x=timestamps, y=data['inverter_temp'], mode='lines', name='Inverter', line=dict(color='#ffd700')))
+        
+        fig.update_layout(
+            title=dict(text="Temperatures Over Time", font=dict(color='#e8e8e8', size=TITLE_FONT_SIZE, family=CHART_FONT)),
+            yaxis_title="Temperature (°C)",
+            xaxis_title="Time",
+            yaxis=dict(color='#e8e8e8', gridcolor='#34495e'),
+            xaxis=dict(color='#e8e8e8', gridcolor='#34495e'),
+            height=260,
+            margin=dict(l=20, r=20, t=40, b=20), # Adjusted margin
+            plot_bgcolor='rgba(0,0,0,0)', # Set plot background to transparent
+            paper_bgcolor='rgba(0,0,0,0)', # Set paper background to transparent
+            font=dict(color='#e8e8e8', family=CHART_FONT),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+        )
+        return fig, button_text
     else:
-        return "🔴 No Data"
+        button_text = "Switch to Time Series"
+        if not data['timestamp']:
+            return go.Figure(), button_text
+        
+        current_min_temp = data['min_cell_temp'][-1] if data['min_cell_temp'] else 0
+        current_max_temp = data['max_cell_temp'][-1] if data['max_cell_temp'] else 0
+        current_inv_temp = data['inverter_temp'][-1] if data['inverter_temp'] else 0
+        
+        fig = go.Figure(go.Bar(
+            x=['Min Cell', 'Max Cell', 'Inverter'],
+            y=[current_min_temp, current_max_temp, current_inv_temp],
+            marker_color=['#3498db', '#e74c3c', '#ffd700'],
+            text=[f'{temp:.1f}°C' for temp in [current_min_temp, current_max_temp, current_inv_temp]],
+            textposition='auto',
+            textfont=dict(color='#1e2329', size=CHART_FONT_SIZE, family=CHART_FONT)
+        ))
+        
+        fig.update_layout(
+            title=dict(text="Current Temperatures", font=dict(color='#e8e8e8', size=TITLE_FONT_SIZE, family=CHART_FONT)),
+            yaxis_title="Temperature (°C)",
+            yaxis=dict(color='#e8e8e8', gridcolor='#34495e'),
+            xaxis=dict(color='#e8e8e8'),
+            height=260,
+            margin=dict(l=20, r=20, t=40, b=20), # Adjusted margin
+            plot_bgcolor='rgba(0,0,0,0)', # Set plot background to transparent
+            paper_bgcolor='rgba(0,0,0,0)', # Set paper background to transparent
+            font=dict(color='#e8e8e8', family=CHART_FONT),
+            transition={'duration': 300, 'easing': 'cubic-in-out'}
+        )
+        return fig, button_text
+
 
 @app.callback(
     Output('speed-gauge', 'figure'),
     Input('telemetry-store', 'data')
 )
 def update_speed_gauge(data):
-    """Update speed gauge"""
     current_speed = data['vehicle_speed'][-1] if data['vehicle_speed'] else 0
-    
     fig = go.Figure(go.Indicator(
-        mode = "gauge+number+delta",
-        value = current_speed,
-        domain = {'x': [0, 1], 'y': [0, 1]},
+        mode = "gauge+number+delta", value = current_speed, domain = {'x': [0, 1], 'y': [0, 1]},
         title = {'text': "Vehicle Speed (km/h)"},
         delta = {'reference': data['vehicle_speed'][-2] if len(data['vehicle_speed']) > 1 else current_speed},
-        gauge = {'axis': {'range': [None, 150]},
-                'bar': {'color': "darkblue"},
-                'steps': [
-                    {'range': [0, 50], 'color': "lightgray"},
-                    {'range': [50, 100], 'color': "gray"},
-                    {'range': [100, 150], 'color': "red"}],
-                'threshold': {'line': {'color': "red", 'width': 4},
-                             'thickness': 0.75, 'value': 120}}))
-    
-    fig.update_layout(
-        height=300, 
-        margin=dict(l=20, r=20, t=40, b=20),
-        plot_bgcolor='#1e2329',
-        paper_bgcolor='#1e2329',
-        font=dict(color='#e8e8e8', size=CHART_FONT_SIZE, family=CHART_FONT)
-    )
+        gauge = {'axis': {'range': [None, 150]}, 'bar': {'color': "darkblue"},
+                'steps': [{'range': [0, 50], 'color': "lightgray"}, {'range': [50, 100], 'color': "gray"}, {'range': [100, 150], 'color': "red"}],
+                'threshold': {'line': {'color': "red", 'width': 4}, 'thickness': 0.75, 'value': 120}}))
+    fig.update_layout(height=300, margin=dict(l=20, r=20, t=40, b=20), 
+                      plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', # Set to transparent
+                      font=dict(color='#e8e8e8', size=CHART_FONT_SIZE, family=CHART_FONT), transition={'duration': 300, 'easing': 'cubic-in-out'})
     return fig
 
 @app.callback(
@@ -390,31 +447,17 @@ def update_speed_gauge(data):
     Input('telemetry-store', 'data')
 )
 def update_voltage_gauge(data):
-    """Update battery voltage gauge"""
     current_voltage = data['battery_voltage'][-1] if data['battery_voltage'] else 0
-    
     fig = go.Figure(go.Indicator(
-        mode = "gauge+number+delta",
-        value = current_voltage,
-        domain = {'x': [0, 1], 'y': [0, 1]},
+        mode = "gauge+number+delta", value = current_voltage, domain = {'x': [0, 1], 'y': [0, 1]},
         title = {'text': "Battery Voltage (V)"},
         delta = {'reference': data['battery_voltage'][-2] if len(data['battery_voltage']) > 1 else current_voltage},
-        gauge = {'axis': {'range': [300, 420]},
-                'bar': {'color': "#27ae60"},
-                'steps': [
-                    {'range': [300, 340], 'color': "#e74c3c"},
-                    {'range': [340, 380], 'color': "#f39c12"},
-                    {'range': [380, 420], 'color': "#2c3e50"}],
-                'threshold': {'line': {'color': "#e74c3c", 'width': 4},
-                             'thickness': 0.75, 'value': 320}}))
-    
-    fig.update_layout(
-        height=300, 
-        margin=dict(l=20, r=20, t=40, b=20),
-        plot_bgcolor='#1e2329',
-        paper_bgcolor='#1e2329',
-        font=dict(color='#e8e8e8', size=CHART_FONT_SIZE, family=CHART_FONT)
-    )
+        gauge = {'axis': {'range': [300, 420]}, 'bar': {'color': "#27ae60"},
+                'steps': [{'range': [300, 340], 'color': "#e74c3c"}, {'range': [340, 380], 'color': "#f39c12"}, {'range': [380, 420], 'color': "#2c3e50"}],
+                'threshold': {'line': {'color': "#e74c3c", 'width': 4}, 'thickness': 0.75, 'value': 320}}))
+    fig.update_layout(height=300, margin=dict(l=20, r=20, t=40, b=20), 
+                      plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', # Set to transparent
+                      font=dict(color='#e8e8e8', size=CHART_FONT_SIZE, family=CHART_FONT), transition={'duration': 300, 'easing': 'cubic-in-out'})
     return fig
 
 @app.callback(
@@ -422,67 +465,17 @@ def update_voltage_gauge(data):
     Input('telemetry-store', 'data')
 )
 def update_soc_gauge(data):
-    """Update battery SOC gauge"""
     current_soc = data['battery_soc'][-1] if data['battery_soc'] else 0
-    
     fig = go.Figure(go.Indicator(
-        mode = "gauge+number+delta",
-        value = current_soc,
-        domain = {'x': [0, 1], 'y': [0, 1]},
+        mode = "gauge+number+delta", value = current_soc, domain = {'x': [0, 1], 'y': [0, 1]},
         title = {'text': "Battery SOC (%)"},
         delta = {'reference': data['battery_soc'][-2] if len(data['battery_soc']) > 1 else current_soc},
-        gauge = {'axis': {'range': [0, 100]},
-                'bar': {'color': "#ffd700"},
-                'steps': [
-                    {'range': [0, 20], 'color': "#e74c3c"},
-                    {'range': [20, 50], 'color': "#f39c12"},
-                    {'range': [50, 100], 'color': "#2c3e50"}],
-                'threshold': {'line': {'color': "#e74c3c", 'width': 4},
-                             'thickness': 0.75, 'value': 15}}))
-    
-    fig.update_layout(
-        height=300, 
-        margin=dict(l=20, r=20, t=40, b=20),
-        plot_bgcolor='#1e2329',
-        paper_bgcolor='#1e2329',
-        font=dict(color='#e8e8e8', size=CHART_FONT_SIZE, family=CHART_FONT)
-    )
-    return fig
-
-@app.callback(
-    Output('temp-overview', 'figure'),
-    Input('telemetry-store', 'data')
-)
-def update_temp_overview(data):
-    """Update temperature overview"""
-    if not data['timestamp']:
-        return go.Figure()
-    
-    current_min_temp = data['min_cell_temp'][-1] if data['min_cell_temp'] else 0
-    current_max_temp = data['max_cell_temp'][-1] if data['max_cell_temp'] else 0
-    current_inv_temp = data['inverter_temp'][-1] if data['inverter_temp'] else 0
-    
-    fig = go.Figure()
-    fig.add_trace(go.Bar(
-        x=['Min Cell', 'Max Cell', 'Inverter'],
-        y=[current_min_temp, current_max_temp, current_inv_temp],
-        marker_color=['#3498db', '#e74c3c', '#ffd700'],
-        text=[f'{temp:.1f}°C' for temp in [current_min_temp, current_max_temp, current_inv_temp]],
-        textposition='auto',
-        textfont=dict(color='#1e2329', size=CHART_FONT_SIZE, family=CHART_FONT)
-    ))
-    
-    fig.update_layout(
-        title=dict(text="Current Temperatures", font=dict(color='#e8e8e8', size=TITLE_FONT_SIZE, family=CHART_FONT)),
-        yaxis_title="Temperature (°C)",
-        yaxis=dict(color='#e8e8e8', gridcolor='#34495e'),
-        xaxis=dict(color='#e8e8e8'),
-        height=300,
-        margin=dict(l=20, r=20, t=40, b=20),
-        plot_bgcolor='#1e2329',
-        paper_bgcolor='#1e2329',
-        font=dict(color='#e8e8e8', family=CHART_FONT)
-    )
+        gauge = {'axis': {'range': [0, 100]}, 'bar': {'color': "#ffd700"},
+                'steps': [{'range': [0, 20], 'color': "#e74c3c"}, {'range': [20, 50], 'color': "#f39c12"}, {'range': [50, 100], 'color': "#2c3e50"}],
+                'threshold': {'line': {'color': "#e74c3c", 'width': 4}, 'thickness': 0.75, 'value': 15}}))
+    fig.update_layout(height=300, margin=dict(l=20, r=20, t=40, b=20), 
+                      plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', # Set to transparent
+                      font=dict(color='#e8e8e8', size=CHART_FONT_SIZE, family=CHART_FONT), transition={'duration': 300, 'easing': 'cubic-in-out'})
     return fig
 
 @app.callback(
@@ -490,35 +483,16 @@ def update_temp_overview(data):
     Input('telemetry-store', 'data')
 )
 def update_speed_timeseries(data):
-    """Update speed time series"""
-    if not data['timestamp']:
-        return go.Figure()
-    
+    if not data['timestamp']: return go.Figure()
     timestamps = [datetime.fromisoformat(t) for t in data['timestamp']]
-    
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(
-        x=timestamps,
-        y=data['vehicle_speed'],
-        mode='lines+markers',
-        name='Vehicle Speed',
-        line=dict(color='#ffd700', width=3),
-        marker=dict(color='#ffd700', size=4)
-    ))
-    
-    fig.update_layout(
-        title=dict(text="Vehicle Speed Over Time", font=dict(color='#e8e8e8', size=TITLE_FONT_SIZE, family=CHART_FONT)),
-        xaxis_title="Time",
-        yaxis_title="Speed (km/h)",
-        xaxis=dict(color='#e8e8e8', gridcolor='#34495e'),
-        yaxis=dict(color='#e8e8e8', gridcolor='#34495e'),
-        height=300,
-        margin=dict(l=40, r=20, t=40, b=40),
-        plot_bgcolor='#1e2329',
-        paper_bgcolor='#1e2329',
-        font=dict(color='#e8e8e8', family=CHART_FONT),
-        legend=dict(font=dict(color='#e8e8e8', family=CHART_FONT))
-    )
+    fig = go.Figure(go.Scatter(x=timestamps, y=data['vehicle_speed'], mode='lines+markers', name='Vehicle Speed',
+                               line=dict(color='#ffd700', width=3), marker=dict(color='#ffd700', size=4)))
+    fig.update_layout(title=dict(text="Vehicle Speed Over Time", font=dict(color='#e8e8e8', size=TITLE_FONT_SIZE, family=CHART_FONT)),
+                      xaxis_title="Time", yaxis_title="Speed (km/h)", xaxis=dict(color='#e8e8e8', gridcolor='#34495e'),
+                      yaxis=dict(color='#e8e8e8', gridcolor='#34495e'), height=300, margin=dict(l=20, r=20, t=40, b=20), # Adjusted margin
+                      plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', # Set to transparent
+                      font=dict(color='#e8e8e8', family=CHART_FONT),
+                      legend=dict(font=dict(color='#e8e8e8', family=CHART_FONT)), transition={'duration': 300, 'easing': 'cubic-in-out'})
     return fig
 
 @app.callback(
@@ -526,46 +500,20 @@ def update_speed_timeseries(data):
     Input('telemetry-store', 'data')
 )
 def update_battery_timeseries(data):
-    """Update battery time series"""
-    if not data['timestamp']:
-        return go.Figure()
-    
+    if not data['timestamp']: return go.Figure()
     timestamps = [datetime.fromisoformat(t) for t in data['timestamp']]
-    
     fig = go.Figure()
-    fig.add_trace(go.Scatter(
-        x=timestamps,
-        y=data['battery_voltage'],
-        mode='lines+markers',
-        name='Voltage (V)',
-        yaxis='y',
-        line=dict(color='#27ae60', width=3),
-        marker=dict(color='#27ae60', size=4)
-    ))
-    
-    fig.add_trace(go.Scatter(
-        x=timestamps,
-        y=data['battery_soc'],
-        mode='lines+markers',
-        name='SOC (%)',
-        yaxis='y2',
-        line=dict(color='#ffd700', width=3),
-        marker=dict(color='#ffd700', size=4)
-    ))
-    
-    fig.update_layout(
-        title=dict(text="Battery Parameters Over Time", font=dict(color='#e8e8e8', size=TITLE_FONT_SIZE, family=CHART_FONT)),
-        xaxis_title="Time",
-        yaxis=dict(title="Voltage (V)", side="left", color='#e8e8e8', gridcolor='#34495e'),
-        yaxis2=dict(title="SOC (%)", side="right", overlaying="y", color='#e8e8e8'),
-        xaxis=dict(color='#e8e8e8', gridcolor='#34495e'),
-        height=300,
-        margin=dict(l=40, r=40, t=40, b=40),
-        plot_bgcolor='#1e2329',
-        paper_bgcolor='#1e2329',
-        font=dict(color='#e8e8e8', family=CHART_FONT),
-        legend=dict(font=dict(color='#e8e8e8', family=CHART_FONT))
-    )
+    fig.add_trace(go.Scatter(x=timestamps, y=data['battery_voltage'], mode='lines+markers', name='Voltage (V)', yaxis='y',
+                             line=dict(color='#27ae60', width=3), marker=dict(color='#27ae60', size=4)))
+    fig.add_trace(go.Scatter(x=timestamps, y=data['battery_soc'], mode='lines+markers', name='SOC (%)', yaxis='y2',
+                             line=dict(color='#ffd700', width=3), marker=dict(color='#ffd700', size=4)))
+    fig.update_layout(title=dict(text="Battery Parameters Over Time", font=dict(color='#e8e8e8', size=TITLE_FONT_SIZE, family=CHART_FONT)),
+                      xaxis_title="Time", yaxis=dict(title="Voltage (V)", side="left", color='#e8e8e8', gridcolor='#34495e'),
+                      yaxis2=dict(title="SOC (%)", side="right", overlaying="y", color='#e8e8e8'), xaxis=dict(color='#e8e8e8', gridcolor='#34495e'),
+                      height=300, margin=dict(l=20, r=20, t=40, b=20), # Adjusted margin
+                      plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', # Set to transparent
+                      font=dict(color='#e8e8e8', family=CHART_FONT), legend=dict(font=dict(color='#e8e8e8', family=CHART_FONT)),
+                      transition={'duration': 300, 'easing': 'cubic-in-out'})
     return fig
 
 @app.callback(
@@ -573,53 +521,21 @@ def update_battery_timeseries(data):
     Input('telemetry-store', 'data')
 )
 def update_temperature_timeseries(data):
-    """Update temperature time series"""
-    if not data['timestamp']:
-        return go.Figure()
-    
+    if not data['timestamp']: return go.Figure()
     timestamps = [datetime.fromisoformat(t) for t in data['timestamp']]
-    
     fig = go.Figure()
-    fig.add_trace(go.Scatter(
-        x=timestamps,
-        y=data['min_cell_temp'],
-        mode='lines+markers',
-        name='Min Cell Temp',
-        line=dict(color='#3498db', width=3),
-        marker=dict(color='#3498db', size=4)
-    ))
-    
-    fig.add_trace(go.Scatter(
-        x=timestamps,
-        y=data['max_cell_temp'],
-        mode='lines+markers',
-        name='Max Cell Temp',
-        line=dict(color='#e74c3c', width=3),
-        marker=dict(color='#e74c3c', size=4)
-    ))
-    
-    fig.add_trace(go.Scatter(
-        x=timestamps,
-        y=data['inverter_temp'],
-        mode='lines+markers',
-        name='Inverter Temp',
-        line=dict(color='#ffd700', width=3),
-        marker=dict(color='#ffd700', size=4)
-    ))
-    
-    fig.update_layout(
-        title=dict(text="Temperature Monitoring Over Time", font=dict(color='#e8e8e8', size=TITLE_FONT_SIZE, family=CHART_FONT)),
-        xaxis_title="Time",
-        yaxis_title="Temperature (°C)",
-        xaxis=dict(color='#e8e8e8', gridcolor='#34495e'),
-        yaxis=dict(color='#e8e8e8', gridcolor='#34495e'),
-        height=300,
-        margin=dict(l=40, r=20, t=40, b=40),
-        plot_bgcolor='#1e2329',
-        paper_bgcolor='#1e2329',
-        font=dict(color='#e8e8e8', family=CHART_FONT),
-        legend=dict(font=dict(color='#e8e8e8', family=CHART_FONT))
-    )
+    fig.add_trace(go.Scatter(x=timestamps, y=data['min_cell_temp'], mode='lines+markers', name='Min Cell Temp',
+                             line=dict(color='#3498db', width=3), marker=dict(color='#3498db', size=4)))
+    fig.add_trace(go.Scatter(x=timestamps, y=data['max_cell_temp'], mode='lines+markers', name='Max Cell Temp',
+                             line=dict(color='#e74c3c', width=3), marker=dict(color='#e74c3c', size=4)))
+    fig.add_trace(go.Scatter(x=timestamps, y=data['inverter_temp'], mode='lines+markers', name='Inverter Temp',
+                             line=dict(color='#ffd700', width=3), marker=dict(color='#ffd700', size=4)))
+    fig.update_layout(title=dict(text="Temperature Monitoring Over Time", font=dict(color='#e8e8e8', size=TITLE_FONT_SIZE, family=CHART_FONT)),
+                      xaxis_title="Time", yaxis_title="Temperature (°C)", xaxis=dict(color='#e8e8e8', gridcolor='#34495e'),
+                      yaxis=dict(color='#e8e8e8', gridcolor='#34495e'), height=300, margin=dict(l=20, r=20, t=40, b=20), # Adjusted margin
+                      plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', # Set to transparent
+                      font=dict(color='#e8e8e8', family=CHART_FONT), legend=dict(font=dict(color='#e8e8e8', family=CHART_FONT)),
+                      transition={'duration': 300, 'easing': 'cubic-in-out'})
     return fig
 
 if __name__ == '__main__':
