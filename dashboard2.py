@@ -366,6 +366,7 @@ def update_temp_overview(data, n_clicks):
     if n_clicks is None:
         n_clicks = 0
 
+    # This part for the time-series view is unchanged
     if n_clicks % 2 == 1:
         button_text = "Switch to Current Values"
         if not data['timestamp']:
@@ -384,13 +385,15 @@ def update_temp_overview(data, n_clicks):
             yaxis=dict(color='#e8e8e8', gridcolor='#34495e'),
             xaxis=dict(color='#e8e8e8', gridcolor='#34495e'),
             height=260,
-            margin=dict(l=20, r=20, t=40, b=20), # Adjusted margin
-            plot_bgcolor='rgba(0,0,0,0)', # Set plot background to transparent
-            paper_bgcolor='rgba(0,0,0,0)', # Set paper background to transparent
+            margin=dict(l=20, r=20, t=80, b=20),
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
             font=dict(color='#e8e8e8', family=CHART_FONT),
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
         )
         return fig, button_text
+    
+    # This is the part for the bar chart view
     else:
         button_text = "Switch to Time Series"
         if not data['timestamp']:
@@ -412,12 +415,13 @@ def update_temp_overview(data, n_clicks):
         fig.update_layout(
             title=dict(text="Current Temperatures", font=dict(color='#e8e8e8', size=TITLE_FONT_SIZE, family=CHART_FONT)),
             yaxis_title="Temperature (°C)",
-            yaxis=dict(color='#e8e8e8', gridcolor='#34495e'),
+            # MODIFIED: Added range=[0, 100] to the yaxis dictionary
+            yaxis=dict(color='#e8e8e8', gridcolor='#34495e', range=[0, 100]),
             xaxis=dict(color='#e8e8e8'),
             height=260,
-            margin=dict(l=20, r=20, t=40, b=20), # Adjusted margin
-            plot_bgcolor='rgba(0,0,0,0)', # Set plot background to transparent
-            paper_bgcolor='rgba(0,0,0,0)', # Set paper background to transparent
+            margin=dict(l=20, r=20, t=80, b=20),
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
             font=dict(color='#e8e8e8', family=CHART_FONT),
             transition={'duration': 300, 'easing': 'cubic-in-out'}
         )
@@ -437,7 +441,7 @@ def update_speed_gauge(data):
         gauge = {'axis': {'range': [None, 150]}, 'bar': {'color': "darkblue"},
                 'steps': [{'range': [0, 50], 'color': "lightgray"}, {'range': [50, 100], 'color': "gray"}, {'range': [100, 150], 'color': "red"}],
                 'threshold': {'line': {'color': "red", 'width': 4}, 'thickness': 0.75, 'value': 120}}))
-    fig.update_layout(height=300, margin=dict(l=20, r=20, t=40, b=20), 
+    fig.update_layout(height=300, margin=dict(l=20, r=20, t=80, b=20), 
                       plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', # Set to transparent
                       font=dict(color='#e8e8e8', size=CHART_FONT_SIZE, family=CHART_FONT), transition={'duration': 300, 'easing': 'cubic-in-out'})
     return fig
@@ -455,7 +459,7 @@ def update_voltage_gauge(data):
         gauge = {'axis': {'range': [300, 420]}, 'bar': {'color': "#27ae60"},
                 'steps': [{'range': [300, 340], 'color': "#e74c3c"}, {'range': [340, 380], 'color': "#f39c12"}, {'range': [380, 420], 'color': "#2c3e50"}],
                 'threshold': {'line': {'color': "#e74c3c", 'width': 4}, 'thickness': 0.75, 'value': 320}}))
-    fig.update_layout(height=300, margin=dict(l=20, r=20, t=40, b=20), 
+    fig.update_layout(height=300, margin=dict(l=20, r=20, t=80, b=20), 
                       plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', # Set to transparent
                       font=dict(color='#e8e8e8', size=CHART_FONT_SIZE, family=CHART_FONT), transition={'duration': 300, 'easing': 'cubic-in-out'})
     return fig
@@ -473,7 +477,7 @@ def update_soc_gauge(data):
         gauge = {'axis': {'range': [0, 100]}, 'bar': {'color': "#ffd700"},
                 'steps': [{'range': [0, 20], 'color': "#e74c3c"}, {'range': [20, 50], 'color': "#f39c12"}, {'range': [50, 100], 'color': "#2c3e50"}],
                 'threshold': {'line': {'color': "#e74c3c", 'width': 4}, 'thickness': 0.75, 'value': 15}}))
-    fig.update_layout(height=300, margin=dict(l=20, r=20, t=40, b=20), 
+    fig.update_layout(height=300, margin=dict(l=20, r=20, t=80, b=20), 
                       plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', # Set to transparent
                       font=dict(color='#e8e8e8', size=CHART_FONT_SIZE, family=CHART_FONT), transition={'duration': 300, 'easing': 'cubic-in-out'})
     return fig
@@ -489,7 +493,7 @@ def update_speed_timeseries(data):
                                line=dict(color='#ffd700', width=3), marker=dict(color='#ffd700', size=4)))
     fig.update_layout(title=dict(text="Vehicle Speed Over Time", font=dict(color='#e8e8e8', size=TITLE_FONT_SIZE, family=CHART_FONT)),
                       xaxis_title="Time", yaxis_title="Speed (km/h)", xaxis=dict(color='#e8e8e8', gridcolor='#34495e'),
-                      yaxis=dict(color='#e8e8e8', gridcolor='#34495e'), height=300, margin=dict(l=20, r=20, t=40, b=20), # Adjusted margin
+                      yaxis=dict(color='#e8e8e8', gridcolor='#34495e'), height=300, margin=dict(l=20, r=20, t=80, b=20), # Adjusted margin
                       plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', # Set to transparent
                       font=dict(color='#e8e8e8', family=CHART_FONT),
                       legend=dict(font=dict(color='#e8e8e8', family=CHART_FONT)), transition={'duration': 300, 'easing': 'cubic-in-out'})
@@ -510,7 +514,7 @@ def update_battery_timeseries(data):
     fig.update_layout(title=dict(text="Battery Parameters Over Time", font=dict(color='#e8e8e8', size=TITLE_FONT_SIZE, family=CHART_FONT)),
                       xaxis_title="Time", yaxis=dict(title="Voltage (V)", side="left", color='#e8e8e8', gridcolor='#34495e'),
                       yaxis2=dict(title="SOC (%)", side="right", overlaying="y", color='#e8e8e8'), xaxis=dict(color='#e8e8e8', gridcolor='#34495e'),
-                      height=300, margin=dict(l=20, r=20, t=40, b=20), # Adjusted margin
+                      height=300, margin=dict(l=20, r=20, t=80, b=20), # Adjusted margin
                       plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', # Set to transparent
                       font=dict(color='#e8e8e8', family=CHART_FONT), legend=dict(font=dict(color='#e8e8e8', family=CHART_FONT)),
                       transition={'duration': 300, 'easing': 'cubic-in-out'})
@@ -532,7 +536,7 @@ def update_temperature_timeseries(data):
                              line=dict(color='#ffd700', width=3), marker=dict(color='#ffd700', size=4)))
     fig.update_layout(title=dict(text="Temperature Monitoring Over Time", font=dict(color='#e8e8e8', size=TITLE_FONT_SIZE, family=CHART_FONT)),
                       xaxis_title="Time", yaxis_title="Temperature (°C)", xaxis=dict(color='#e8e8e8', gridcolor='#34495e'),
-                      yaxis=dict(color='#e8e8e8', gridcolor='#34495e'), height=300, margin=dict(l=20, r=20, t=40, b=20), # Adjusted margin
+                      yaxis=dict(color='#e8e8e8', gridcolor='#34495e'), height=300, margin=dict(l=20, r=20, t=80, b=20), # Adjusted margin
                       plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', # Set to transparent
                       font=dict(color='#e8e8e8', family=CHART_FONT), legend=dict(font=dict(color='#e8e8e8', family=CHART_FONT)),
                       transition={'duration': 300, 'easing': 'cubic-in-out'})
