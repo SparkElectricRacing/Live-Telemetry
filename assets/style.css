@@ -122,3 +122,11 @@ body {
 .status-warning { 
     background-color: #dc3545; /* Red */
 }
+/* Add this to control row layout and spacing */
+.gauge-row,
+.mixed-row,
+.chart-row {
+    display: flex;
+    gap: 20px; /* Adds HORIZONTAL space between plots in the same row */
+    margin-bottom: 20px; /* Adds VERTICAL space between the rows */
+}
