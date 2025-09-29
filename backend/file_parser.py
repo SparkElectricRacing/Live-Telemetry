@@ -32,9 +32,31 @@ def parse_in(inp):
         hcSanValA = inp >> 120
     else: 
         print(type(inp))
-        
-    
-    return hcSanValA, canId, subId, timestamp, data, hcSanValB
+    signal_name = ""
+    if canId == 0x7C:
+        if subId == 0:
+            signal_name == "avg_temp"
+        elif subId == 1:
+            signal_name == "avg_cell_voltage"
+        elif subId == 2:
+            signal_name == "pack_voltage"
+        elif subId == 3:
+            signal_name == "pack_SOC"
+        elif subId == 4:
+            signal_name == "is_charging"
+    elif canId == 0x7D:
+        if subId == 0:
+            signal_name == "low_cell_voltage"
+        elif subId == 1:
+            signal_name == "high_cell_voltage"
+        elif subId == 2:
+            signal_name == "max_cell_temp"
+        elif subId == 3:
+            signal_name == "DTC1"
+    elif canId == 0xA5:
+        if subId == 0:
+            signal_name == "raw_rpm"
+    return hcSanValA, signal_name, timestamp, data, hcSanValB
     
 # dev_addr, typ, time, data, p = parse_in("0000000000000000000001000000000001001000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001")
 # print(dev_addr)
@@ -50,8 +72,8 @@ def read_bin_file(file):
             if not line:
                 print("EOF")
                 break
-            hcSanValA, canId, subId, timestamp, data, hcSanValB = parse_in(line)
-            print(hcSanValA, canId, subId, timestamp, data, hcSanValB)
+            hcSanValA, signal_name, timestamp, data, hcSanValB = parse_in(line)
+            print(hcSanValA, signal_name, timestamp, data, hcSanValB)
             # row = [hcSanValA, canId, subId, timestamp, data, hcSanValB]
     return
 
@@ -63,8 +85,8 @@ def read_from_arduino(port_name, baud_rate):
                 print("waiting on line - empty")
                 continue
             try:
-                hcSanValA, canId, subId, timestamp, data, hcSanValB = parse_in(line)
-                print(hcSanValA, canId, subId, timestamp, data, hcSanValB)
+                hcSanValA, signal_name, timestamp, data, hcSanValB = parse_in(line)
+                print(hcSanValA, signal_name, timestamp, data, hcSanValB)
             except Exception as e:
                 print("Bad line")
                 continue
@@ -76,8 +98,8 @@ def read_from_arduino_v2(port_name, baud_rate):
     while True:
         while ser.in_waiting > 0:
             line = ser.readline().decode('utf-8').rstrip()
-            hcSanValA, canId, subId, timestamp, data, hcSanValB = parse_in(line)
-            entry = [hcSanValA, canId, subId, timestamp, data, hcSanValB]
+            hcSanValA, signal_name, timestamp, data, hcSanValB = parse_in(line)
+            entry = [hcSanValA, signal_name, timestamp, data, hcSanValB]
             gv.buffer.put(entry)
         time.sleep(0.1)
     # Add error checks for port etc
