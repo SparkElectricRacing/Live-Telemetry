@@ -1,1 +1,0 @@
-signal_name = SIGNALS.get((canId, subId), "")

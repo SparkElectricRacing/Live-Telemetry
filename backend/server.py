@@ -7,18 +7,20 @@ app = FastAPI()
 def read_root():
     size = gv.buffer.qsize()
     
-    # hcSanValA, canId, subId, timestamp, data, hcSanValB
-    
+    # Inputs
+    # hcSanValA, signal_name, timestamp, data, hcSanValB
     # hardcoded sanity assert value (0xbb)
-    # CAN device id
-    # Subidentifier (for devices that send more than one type of data per address, i.e. from BMS AUX (0x7D): 0x00 = low cell V, 0x01 = high cell V, etc.)
+    # signal_name - made in file_parser.py
     # timestamp, in ms from device enable
     # data, big-endian? (i need to double check the endianness but memcpy gives the correct result either way)
     # hardcoded sanity assert value (0x9a)
     
-    # Change to be this
+    # Output Format
     # {"RPM": {"Time":[...], "Data":[...]}, "Voltage": {"Time":[...], "Data":[...]}, ...}
     
+    # Criteria:
+    # Make sure sanity assert values are valid
+    # Make sure signal name is valid - currently omitting any bad signal names or incorrect sanity bits from json
 
     for _ in range(size):
         signals = {

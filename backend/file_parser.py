@@ -43,30 +43,22 @@ def parse_in(inp):
     if type(inp) == str:
         inp = int(inp, 2)
     if type(inp) == int or type(inp) == float:
-        # inp = inp - ((inp >> 112) << 112)
-        # p = inp & 1 # right then left shift
-        # data = (inp - ((inp >> 65) << 65) - p) >> 1
-        # time = (inp - ((inp >> 97) << 97) - p - (data << 1)) >> 65
-        # typ = (inp - ((inp >> 100) << 100) - p - (data << 1) - (time << 65)) >> 97
-        # dev_addr = (inp - p - (data << 1) - (time << 65) - (typ << 97)) >> 100
         inp = inp - ((inp >> 128) << 128)
         hcSanValB = inp & 0xFF 
-        data = (inp - ((inp >> 72) << 72) - hcSanValB) >> 8
-        timestamp = (inp - ((inp >> 104) << 104) - hcSanValB - (data << 8)) >> 72
-        subId = (inp - ((inp >> 112) << 112) - hcSanValB - (data << 8) - (timestamp << 72)) >> 104
-        canId = (inp - ((inp >> 120) << 120) - hcSanValB - (data << 8) - (timestamp << 72) - (subId << 104)) >> 112
-        hcSanValA = inp >> 120
+        data = (inp >> 8) & 0xFFFFFFFFFFFFFFFF
+        timestamp = (inp >> 72) & 0xFFFFFFFF
+        subId = (inp >> 104) & 0xFF
+        canId = (inp >> 112) & 0xFF
+        hcSanValA = (inp >> 120) & 0xFF
+        # data = (inp - ((inp >> 72) << 72) - hcSanValB) >> 8
+        # timestamp = (inp - ((inp >> 104) << 104) - hcSanValB - (data << 8)) >> 72
+        # subId = (inp - ((inp >> 112) << 112) - hcSanValB - (data << 8) - (timestamp << 72)) >> 104
+        # canId = (inp - ((inp >> 120) << 120) - hcSanValB - (data << 8) - (timestamp << 72) - (subId << 104)) >> 112
+        # hcSanValA = inp >> 120
     else: 
         print(type(inp))
     signal_name = signals.get((canId, subId), "")
     return hcSanValA, signal_name, timestamp, data, hcSanValB
-    
-# dev_addr, typ, time, data, p = parse_in("0000000000000000000001000000000001001000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001")
-# print(dev_addr)
-# print(typ)
-# print(time)
-# print(data)
-# print(p)
 
 def read_bin_file(file):
     with open(file, 'rb') as f:
@@ -77,7 +69,6 @@ def read_bin_file(file):
                 break
             hcSanValA, signal_name, timestamp, data, hcSanValB = parse_in(line)
             print(hcSanValA, signal_name, timestamp, data, hcSanValB)
-            # row = [hcSanValA, canId, subId, timestamp, data, hcSanValB]
     return
 
 def read_from_arduino(port_name, baud_rate):
@@ -99,7 +90,7 @@ def read_from_arduino_v2(port_name, baud_rate):
     ser = serial.Serial(port_name, baud_rate, timeout = 1)
     time.sleep(2)
     while True:
-        while ser.in_waiting > 0:
+        while ser.in_waiting > 16:
             line = ser.readline().decode('utf-8').rstrip()
             hcSanValA, signal_name, timestamp, data, hcSanValB = parse_in(line)
             entry = [hcSanValA, signal_name, timestamp, data, hcSanValB]
