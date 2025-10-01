@@ -24,6 +24,19 @@ SIGNALS = {
 }
 
 def parse_in(inp):
+    
+    signals = {
+        (0x7C, 0): "avg_temp",
+        (0x7C, 1): "avg_cell_voltage",
+        (0x7C, 2): "pack_voltage",
+        (0x7C, 3): "pack_SOC",
+        (0x7C, 4): "is_charging",
+        (0x7D, 0): "low_cell_voltage",
+        (0x7D, 1): "high_cell_voltage",
+        (0x7D, 2): "max_cell_temp",
+        (0x7D, 3): "DTC1",
+        (0xA5, 0): "raw_rpm",
+    }
     if type(inp) == bytes:
         inp = ''.join(f'{byte:08b}' for byte in inp)
         # print(inp)
@@ -45,7 +58,7 @@ def parse_in(inp):
         hcSanValA = inp >> 120
     else: 
         print(type(inp))
-    signal_name = SIGNALS.get((canId, subId), "")
+    signal_name = signals.get((canId, subId), "")
     return hcSanValA, signal_name, timestamp, data, hcSanValB
     
 # dev_addr, typ, time, data, p = parse_in("0000000000000000000001000000000001001000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001")
