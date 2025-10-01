@@ -39,26 +39,21 @@ def parse_in(inp):
     }
     if type(inp) == bytes:
         inp = ''.join(f'{byte:08b}' for byte in inp)
-        # print(inp)
     if type(inp) == str:
         inp = int(inp, 2)
     if type(inp) == int or type(inp) == float:
         inp = inp - ((inp >> 128) << 128)
         hcSanValB = inp & 0xFF 
-        data = (inp >> 8) & 0xFFFFFFFFFFFFFFFF
-        timestamp = (inp >> 72) & 0xFFFFFFFF
+        data = (inp >> 8) & 0xFFFFFFFFFFFFFFFF # 8 byte
+        timestamp = (inp >> 72) & 0xFFFFFFFF # 4 byte
         subId = (inp >> 104) & 0xFF
         canId = (inp >> 112) & 0xFF
         hcSanValA = (inp >> 120) & 0xFF
-        # data = (inp - ((inp >> 72) << 72) - hcSanValB) >> 8
-        # timestamp = (inp - ((inp >> 104) << 104) - hcSanValB - (data << 8)) >> 72
-        # subId = (inp - ((inp >> 112) << 112) - hcSanValB - (data << 8) - (timestamp << 72)) >> 104
-        # canId = (inp - ((inp >> 120) << 120) - hcSanValB - (data << 8) - (timestamp << 72) - (subId << 104)) >> 112
-        # hcSanValA = inp >> 120
+        signal_name = signals.get((canId, subId), "")
+        return hcSanValA, signal_name, timestamp, data, hcSanValB
     else: 
         print(type(inp))
-    signal_name = signals.get((canId, subId), "")
-    return hcSanValA, signal_name, timestamp, data, hcSanValB
+        return 0, "", 0, 0, 0
 
 def read_bin_file(file):
     with open(file, 'rb') as f:

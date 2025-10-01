@@ -21,20 +21,19 @@ def read_root():
     # Criteria:
     # Make sure sanity assert values are valid
     # Make sure signal name is valid - currently omitting any bad signal names or incorrect sanity bits from json
-
+    signals = {
+        "avg_temp": [],
+        "avg_cell_voltage": [],
+        "pack_voltage": [],
+        "pack_SOC": [],
+        "is_charging": [],
+        "low_cell_voltage": [],
+        "high_cell_voltage": [],
+        "max_cell_temp": [],
+        "DTC1": [],
+        "raw_rpm": []
+    }
     for _ in range(size):
-        signals = {
-            "avg_temp": [],
-            "avg_cell_voltage": [],
-            "pack_voltage": [],
-            "pack_SOC": [],
-            "is_charging": [],
-            "low_cell_voltage": [],
-            "high_cell_voltage": [],
-            "max_cell_temp": [],
-            "DTC1": [],
-            "raw_rpm": []
-        }
         row = gv.buffer.get()
         if row[0] == 0xBB & row[4] == 0x9A: # Will not receive data that does not have correct sanity bytes
             row_object = {
