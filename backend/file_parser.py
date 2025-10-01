@@ -10,6 +10,19 @@ import global_vars as gv
 # [15*] hardcoded sanity assert value (0x9a)
 # So 16 bytes / entry gives us a lot of wiggle room for the amt of data we send over
 
+SIGNALS = {
+    (0x7C, 0): "avg_temp",
+    (0x7C, 1): "avg_cell_voltage",
+    (0x7C, 2): "pack_voltage",
+    (0x7C, 3): "pack_SOC",
+    (0x7C, 4): "is_charging",
+    (0x7D, 0): "low_cell_voltage",
+    (0x7D, 1): "high_cell_voltage",
+    (0x7D, 2): "max_cell_temp",
+    (0x7D, 3): "DTC1",
+    (0xA5, 0): "raw_rpm",
+}
+
 def parse_in(inp):
     if type(inp) == bytes:
         inp = ''.join(f'{byte:08b}' for byte in inp)
@@ -32,30 +45,7 @@ def parse_in(inp):
         hcSanValA = inp >> 120
     else: 
         print(type(inp))
-    signal_name = ""
-    if canId == 0x7C:
-        if subId == 0:
-            signal_name = "avg_temp"
-        elif subId == 1:
-            signal_name = "avg_cell_voltage"
-        elif subId == 2:
-            signal_name = "pack_voltage"
-        elif subId == 3:
-            signal_name = "pack_SOC"
-        elif subId == 4:
-            signal_name = "is_charging"
-    elif canId == 0x7D:
-        if subId == 0:
-            signal_name = "low_cell_voltage"
-        elif subId == 1:
-            signal_name = "high_cell_voltage"
-        elif subId == 2:
-            signal_name = "max_cell_temp"
-        elif subId == 3:
-            signal_name = "DTC1"
-    elif canId == 0xA5:
-        if subId == 0:
-            signal_name = "raw_rpm"
+    signal_name = SIGNALS.get((canId, subId), "")
     return hcSanValA, signal_name, timestamp, data, hcSanValB
     
 # dev_addr, typ, time, data, p = parse_in("0000000000000000000001000000000001001000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001")
