@@ -35,27 +35,27 @@ def parse_in(inp):
     signal_name = ""
     if canId == 0x7C:
         if subId == 0:
-            signal_name == "avg_temp"
+            signal_name = "avg_temp"
         elif subId == 1:
-            signal_name == "avg_cell_voltage"
+            signal_name = "avg_cell_voltage"
         elif subId == 2:
-            signal_name == "pack_voltage"
+            signal_name = "pack_voltage"
         elif subId == 3:
-            signal_name == "pack_SOC"
+            signal_name = "pack_SOC"
         elif subId == 4:
-            signal_name == "is_charging"
+            signal_name = "is_charging"
     elif canId == 0x7D:
         if subId == 0:
-            signal_name == "low_cell_voltage"
+            signal_name = "low_cell_voltage"
         elif subId == 1:
-            signal_name == "high_cell_voltage"
+            signal_name = "high_cell_voltage"
         elif subId == 2:
-            signal_name == "max_cell_temp"
+            signal_name = "max_cell_temp"
         elif subId == 3:
-            signal_name == "DTC1"
+            signal_name = "DTC1"
     elif canId == 0xA5:
         if subId == 0:
-            signal_name == "raw_rpm"
+            signal_name = "raw_rpm"
     return hcSanValA, signal_name, timestamp, data, hcSanValB
     
 # dev_addr, typ, time, data, p = parse_in("0000000000000000000001000000000001001000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001")
