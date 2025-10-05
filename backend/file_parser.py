@@ -9,50 +9,49 @@ import global_vars as gv
 # [7-14*] data, big-endian? (i need to double check the endianness but memcpy gives the correct result either way)
 # [15*] hardcoded sanity assert value (0x9a)
 # So 16 bytes / entry gives us a lot of wiggle room for the amt of data we send over
+SIGNALS = {
+        (0x7C, 0): "avg_temp",
+        (0x7C, 1): "avg_cell_voltage",
+        (0x7C, 2): "pack_voltage",
+        (0x7C, 3): "pack_SOC",
+        (0x7C, 4): "is_charging",
+        (0x7D, 0): "low_cell_voltage",
+        (0x7D, 1): "high_cell_voltage",
+        (0x7D, 2): "max_cell_temp",
+        (0x7D, 3): "DTC1",
+        (0xA5, 0): "raw_rpm",
+    }
 
 def parse_in(inp):
-    if type(inp) == bytes:
-        inp = ''.join(f'{byte:08b}' for byte in inp)
-        # print(inp)
-    if type(inp) == str:
-        inp = int(inp, 2)
+    inp = int.from_bytes(inp, byteorder='big') # quicker
+    # if type(inp) == bytes:
+    #     inp = ''.join(f'{byte:08b}' for byte in inp)
+    # if type(inp) == str:
+    #     inp = int(inp, 2)
     if type(inp) == int or type(inp) == float:
-        # inp = inp - ((inp >> 112) << 112)
-        # p = inp & 1 # right then left shift
-        # data = (inp - ((inp >> 65) << 65) - p) >> 1
-        # time = (inp - ((inp >> 97) << 97) - p - (data << 1)) >> 65
-        # typ = (inp - ((inp >> 100) << 100) - p - (data << 1) - (time << 65)) >> 97
-        # dev_addr = (inp - p - (data << 1) - (time << 65) - (typ << 97)) >> 100
-        inp = inp - ((inp >> 128) << 128)
+        # inp = inp & 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF # 16 byte to ensure only dealing with 16 bytes
         hcSanValB = inp & 0xFF 
-        data = (inp - ((inp >> 72) << 72) - hcSanValB) >> 8
-        timestamp = (inp - ((inp >> 104) << 104) - hcSanValB - (data << 8)) >> 72
-        subId = (inp - ((inp >> 112) << 112) - hcSanValB - (data << 8) - (timestamp << 72)) >> 104
-        canId = (inp - ((inp >> 120) << 120) - hcSanValB - (data << 8) - (timestamp << 72) - (subId << 104)) >> 112
-        hcSanValA = inp >> 120
+        data = (inp >> 8) & 0xFFFFFFFFFFFFFFFF # 8 byte
+        timestamp = (inp >> 72) & 0xFFFFFFFF # 4 byte
+        subId = (inp >> 104) & 0xFF
+        canId = (inp >> 112) & 0xFF
+        hcSanValA = (inp >> 120) & 0xFF
+        signal_name = SIGNALS.get((canId, subId), "")
+        return hcSanValA, signal_name, timestamp, data, hcSanValB
     else: 
         print(type(inp))
-        
-    
-    return hcSanValA, canId, subId, timestamp, data, hcSanValB
-    
-# dev_addr, typ, time, data, p = parse_in("0000000000000000000001000000000001001000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001")
-# print(dev_addr)
-# print(typ)
-# print(time)
-# print(data)
-# print(p)
+        return 0, "", 0, 0, 0
 
 def read_bin_file(file):
+    # look at changing logic to include := walrus operator while loop with conditional to verify 16 bytes acc taken
     with open(file, 'rb') as f:
         while True:
             line = f.read(16)
             if not line:
                 print("EOF")
                 break
-            hcSanValA, canId, subId, timestamp, data, hcSanValB = parse_in(line)
-            print(hcSanValA, canId, subId, timestamp, data, hcSanValB)
-            # row = [hcSanValA, canId, subId, timestamp, data, hcSanValB]
+            hcSanValA, signal_name, timestamp, data, hcSanValB = parse_in(line)
+            print(hcSanValA, signal_name, timestamp, data, hcSanValB)
     return
 
 def read_from_arduino(port_name, baud_rate):
@@ -63,8 +62,8 @@ def read_from_arduino(port_name, baud_rate):
                 print("waiting on line - empty")
                 continue
             try:
-                hcSanValA, canId, subId, timestamp, data, hcSanValB = parse_in(line)
-                print(hcSanValA, canId, subId, timestamp, data, hcSanValB)
+                hcSanValA, signal_name, timestamp, data, hcSanValB = parse_in(line)
+                print(hcSanValA, signal_name, timestamp, data, hcSanValB)
             except Exception as e:
                 print("Bad line")
                 continue
@@ -74,10 +73,10 @@ def read_from_arduino_v2(port_name, baud_rate):
     ser = serial.Serial(port_name, baud_rate, timeout = 1)
     time.sleep(2)
     while True:
-        while ser.in_waiting > 0:
+        while ser.in_waiting > 16:
             line = ser.readline().decode('utf-8').rstrip()
-            hcSanValA, canId, subId, timestamp, data, hcSanValB = parse_in(line)
-            entry = [hcSanValA, canId, subId, timestamp, data, hcSanValB]
+            hcSanValA, signal_name, timestamp, data, hcSanValB = parse_in(line)
+            entry = [hcSanValA, signal_name, timestamp, data, hcSanValB]
             gv.buffer.put(entry)
         time.sleep(0.1)
     # Add error checks for port etc
