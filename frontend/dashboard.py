@@ -239,8 +239,13 @@ app.layout = html.Div([
         html.Div([
             html.Div(id="connection-status", className="status-indicator"),
             html.Div(f"Mode: {'Mock Data' if telemetry.mock_mode else 'Live API'}", 
-                    className="mode-indicator")
-        ], className="status-bar")
+                    className="mode-indicator"),
+            html.Div([
+                html.Button("Stop Collection", id="stop-btn", n_clicks=0, className="control-btn stop-btn"),
+                html.Button("Start Collection", id="start-btn", n_clicks=0, className="control-btn start-btn")
+            ], className="control-buttons")
+        ], className="status-bar"),
+        html.Div(id="error-notification", className="error-notification hidden")
     ], className="header"),
     
     # Main dashboard content
@@ -323,14 +328,73 @@ def update_telemetry_store(n, existing_data):
     Input('telemetry-store', 'data')
 )
 def update_connection_status(data):
-    if data and data['timestamp']:
+    if not telemetry.running:
+        return "🔴 Collection Stopped"
+    elif data and data['timestamp']:
         latest_time = datetime.fromisoformat(data['timestamp'][-1])
         time_diff = (datetime.now() - latest_time).total_seconds()
         if time_diff < 2:
             return "🟢 Live Data"
         else:
             return f"🟡 Stale Data ({time_diff:.1f}s old)"
-    return "🔴 No Data"
+    else:
+        if telemetry.api_available:
+            return "🟡 Server Not Responding"
+        else:
+            return "🔴 No Data"
+
+@app.callback(
+    Output('start-btn', 'disabled'),
+    Output('stop-btn', 'disabled'),
+    Input('start-btn', 'n_clicks'),
+    Input('stop-btn', 'n_clicks'),
+    prevent_initial_call=True
+)
+def handle_collection_controls(start_clicks, stop_clicks):
+    ctx = dash.callback_context
+    if not ctx.triggered:
+        return not telemetry.running, telemetry.running
+    
+    button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    
+    if button_id == 'start-btn':
+        if not telemetry.running:
+            telemetry.start()
+            logging.info("Data collection started by user")
+        return True, False
+    elif button_id == 'stop-btn':
+        if telemetry.running:
+            telemetry.stop()
+            logging.info("Data collection stopped by user")
+        return False, True
+    
+    return not telemetry.running, telemetry.running
+
+@app.callback(
+    Output('error-notification', 'children'),
+    Output('error-notification', 'className'),
+    Input('telemetry-store', 'data'),
+    Input('start-btn', 'n_clicks'),
+    Input('stop-btn', 'n_clicks')
+)
+def update_error_notification(data, start_clicks, stop_clicks):
+    if not telemetry.running:
+        return "", "error-notification hidden"
+    
+    if telemetry.mock_mode:
+        return "", "error-notification hidden"
+    
+    # Check if we have stale data or no data from API
+    if data and data['timestamp']:
+        latest_time = datetime.fromisoformat(data['timestamp'][-1])
+        time_diff = (datetime.now() - latest_time).total_seconds()
+        if time_diff > 5:  # More than 5 seconds old
+            return "⚠️ Server connection lost - data may be stale", "error-notification warning"
+    else:
+        if telemetry.api_available:
+            return "⚠️ No data received from server", "error-notification warning"
+    
+    return "", "error-notification hidden"
         
 @app.callback(
     Output('voltage-status-indicator', 'children'),
