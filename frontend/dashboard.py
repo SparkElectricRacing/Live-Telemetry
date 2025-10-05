@@ -366,7 +366,6 @@ def update_temp_overview(data, n_clicks):
     if n_clicks is None:
         n_clicks = 0
 
-    # This part for the time-series view is unchanged
     if n_clicks % 2 == 1:
         button_text = "Switch to Current Values"
         if not data['timestamp']:
