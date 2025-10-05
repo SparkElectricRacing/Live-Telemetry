@@ -1,6 +1,6 @@
 import dash
 from dash import dcc, html, Input, Output, callback
-from dash.dependencies import State
+from dash.dependencies import State, ALL
 import plotly.graph_objs as go
 import plotly.express as px
 import pandas as pd
@@ -58,6 +58,13 @@ class TelemetryReceiver:
         self.api_available = False
         self.running = False
         self.mock_mode = True
+        
+        # Playback mode
+        self.playback_mode = False
+        self.playback_file = None
+        self.playback_data = []
+        self.playback_index = 0
+        self.playback_paused = False
 
         # Data storage for plotting
         self.max_points = 100
@@ -170,7 +177,22 @@ class TelemetryReceiver:
         """Background thread for receiving data"""
         while self.running:
             try:
-                if self.mock_mode:
+                if self.playback_mode:
+                    if not self.playback_paused and self.playback_index < len(self.playback_data):
+                        data = self.playback_data[self.playback_index]
+                        self.playback_index += 1
+                        time.sleep(API_POLL_RATE)
+                    elif self.playback_index >= len(self.playback_data):
+                        # Playback finished
+                        self.playback_mode = False
+                        logging.info("Playback finished")
+                        time.sleep(1)
+                        continue
+                    else:
+                        # Paused
+                        time.sleep(0.1)
+                        continue
+                elif self.mock_mode:
                     data = self.generate_mock_data()
                     time.sleep(API_POLL_RATE)
                 else:
@@ -183,7 +205,8 @@ class TelemetryReceiver:
                 # The thread's ONLY job is to put data on the queue
                 if data:
                     self.data_queue.put(data)
-                    logging.info(f"Telemetry: {data}")
+                    if not self.playback_mode:
+                        logging.info(f"Telemetry: {data}")
 
             except Exception as e:
                 logging.error(f"Error in data receiver: {e}")
@@ -218,7 +241,64 @@ class TelemetryReceiver:
     def stop(self):
         """Stop the telemetry receiver"""
         self.running = False
+        self.playback_mode = False
         logging.info("Telemetry receiver stopped")
+    
+    def load_log_file(self, log_file_path):
+        """Load telemetry data from log file for playback"""
+        try:
+            import re
+            import json
+            
+            self.playback_data = []
+            with open(log_file_path, 'r') as f:
+                for line in f:
+                    # Extract JSON data from log lines
+                    if 'Telemetry:' in line:
+                        # Find the JSON part after "Telemetry: "
+                        json_start = line.find('Telemetry: ') + len('Telemetry: ')
+                        json_str = line[json_start:].strip()
+                        try:
+                            data = json.loads(json_str)
+                            self.playback_data.append(data)
+                        except json.JSONDecodeError:
+                            continue
+            
+            logging.info(f"Loaded {len(self.playback_data)} data points from {log_file_path}")
+            return len(self.playback_data) > 0
+        except Exception as e:
+            logging.error(f"Error loading log file: {e}")
+            return False
+    
+    def start_playback(self, log_file_path):
+        """Start playback from a log file"""
+        if self.load_log_file(log_file_path):
+            self.playback_mode = True
+            self.playback_index = 0
+            self.playback_paused = False
+            self.playback_file = log_file_path
+            if not self.running:
+                self.start()
+            logging.info(f"Started playback of {log_file_path}")
+            return True
+        return False
+    
+    def pause_playback(self):
+        """Pause playback"""
+        self.playback_paused = True
+        logging.info("Playback paused")
+    
+    def resume_playback(self):
+        """Resume playback"""
+        self.playback_paused = False
+        logging.info("Playback resumed")
+    
+    def stop_playback(self):
+        """Stop playback and return to normal mode"""
+        self.playback_mode = False
+        self.playback_paused = False
+        self.playback_index = 0
+        logging.info("Playback stopped")
 
 # Initialize telemetry receiver
 telemetry = TelemetryReceiver()
@@ -291,10 +371,44 @@ app.layout = html.Div([
                 dcc.Graph(id="temperature-timeseries"),
             ], className="chart-container-full"),
         ], className="chart-row"),
+        
+        # Log Management Section
+        html.Div([
+            html.H3("Log Management", className="section-title"),
+            html.Div([
+                html.Div([
+                    html.H4("Available Log Files"),
+                    html.Div(id="log-files-list"),
+                    html.Button("Refresh List", id="refresh-logs-btn", n_clicks=0, className="control-btn"),
+                    html.Div([
+                        dcc.Input(id="file-operation-input", type="text", placeholder="Enter filename to delete/rename", style={"width": "200px"}),
+                        html.Button("Delete", id="delete-file-btn", n_clicks=0, className="control-btn stop-btn"),
+                        html.Button("Rename", id="rename-file-btn", n_clicks=0, className="control-btn"),
+                        dcc.Input(id="new-name-input", type="text", placeholder="New name", style={"width": "150px"}),
+                    ], className="file-operations", style={"margin-top": "10px"}),
+                    html.Div(id="file-operation-status", className="operation-status")
+                ], className="log-list-container"),
+                html.Div([
+                    html.H4("Playback Controls"),
+                    html.Div([
+                        dcc.Dropdown(id="selected-log-file", placeholder="Select a log file for playback"),
+                        html.Div([
+                            html.Button("Play", id="play-btn", n_clicks=0, className="control-btn start-btn"),
+                            html.Button("Pause", id="pause-btn", n_clicks=0, className="control-btn"),
+                            html.Button("Stop", id="stop-playback-btn", n_clicks=0, className="control-btn stop-btn"),
+                        ], className="playback-controls"),
+                        html.Div(id="playback-status", className="playback-status")
+                    ])
+                ], className="playback-container")
+            ], className="log-management-row")
+        ], className="log-management-section")
     ], className="dashboard-content"),
     
     dcc.Interval(id='interval-component', interval=UPDATE_INTERVAL, n_intervals=0),
-    dcc.Store(id='telemetry-store')
+    dcc.Store(id='telemetry-store'),
+    dcc.Store(id='page-load-trigger', data=0),  # Trigger initial load
+    dcc.Store(id='file-action-store'),
+    html.Div(id='delete-trigger', style={'display': 'none'})
 ], className="main-container")
 
 # Callbacks for updating charts
@@ -330,6 +444,11 @@ def update_telemetry_store(n, existing_data):
 def update_connection_status(data):
     if not telemetry.running:
         return "🔴 Collection Stopped"
+    elif telemetry.playback_mode:
+        if telemetry.playback_paused:
+            return "⏸️ Playback Paused"
+        else:
+            return "▶️ Playing Back Data"
     elif data and data['timestamp']:
         latest_time = datetime.fromisoformat(data['timestamp'][-1])
         time_diff = (datetime.now() - latest_time).total_seconds()
@@ -348,9 +467,9 @@ def update_connection_status(data):
     Output('stop-btn', 'disabled'),
     Input('start-btn', 'n_clicks'),
     Input('stop-btn', 'n_clicks'),
-    prevent_initial_call=True
+    Input('page-load-trigger', 'data')
 )
-def handle_collection_controls(start_clicks, stop_clicks):
+def handle_collection_controls(start_clicks, stop_clicks, page_load):
     ctx = dash.callback_context
     if not ctx.triggered:
         return not telemetry.running, telemetry.running
@@ -395,6 +514,164 @@ def update_error_notification(data, start_clicks, stop_clicks):
             return "⚠️ No data received from server", "error-notification warning"
     
     return "", "error-notification hidden"
+
+@app.callback(
+    Output('log-files-list', 'children'),
+    Output('selected-log-file', 'options'),
+    Input('refresh-logs-btn', 'n_clicks'),
+    Input('page-load-trigger', 'data')
+)
+def update_log_files_list(n_clicks, page_load):
+    try:
+        log_files = []
+        for filename in os.listdir(LOG_DIRECTORY):
+            if filename.endswith('.log'):
+                filepath = os.path.join(LOG_DIRECTORY, filename)
+                file_size = os.path.getsize(filepath) / 1024  # KB
+                file_time = datetime.fromtimestamp(os.path.getmtime(filepath))
+                
+                log_files.append({
+                    'filename': filename,
+                    'filepath': filepath,
+                    'size_kb': file_size,
+                    'modified': file_time
+                })
+        
+        # Sort by modification time, newest first
+        log_files.sort(key=lambda x: x['modified'], reverse=True)
+        
+        # Create display elements
+        file_elements = []
+        dropdown_options = []
+        
+        for log_file in log_files:
+            file_elements.append(
+                html.Div([
+                    html.Span(log_file['filename'], className="log-filename"),
+                    html.Span(f"{log_file['size_kb']:.1f} KB", className="log-size"),
+                    html.Span(log_file['modified'].strftime("%Y-%m-%d %H:%M"), className="log-time")
+                ], className="log-file-item")
+            )
+            
+            dropdown_options.append({
+                'label': f"{log_file['filename']} ({log_file['size_kb']:.1f}KB)",
+                'value': log_file['filepath']
+            })
+        
+        return file_elements, dropdown_options
+        
+    except Exception as e:
+        return [html.Div(f"Error loading log files: {e}")], []
+
+@app.callback(
+    Output('log-files-list', 'children', allow_duplicate=True),
+    Output('selected-log-file', 'options', allow_duplicate=True),
+    Output('file-operation-input', 'value'),
+    Output('new-name-input', 'value'),
+    Output('file-operation-status', 'children'),
+    Input('delete-file-btn', 'n_clicks'),
+    Input('rename-file-btn', 'n_clicks'),
+    State('file-operation-input', 'value'),
+    State('new-name-input', 'value'),
+    prevent_initial_call=True
+)
+def handle_file_operations(delete_clicks, rename_clicks, filename, new_name):
+    ctx = dash.callback_context
+    if not ctx.triggered:
+        raise dash.exceptions.PreventUpdate
+    
+    button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    status_message = ""
+    
+    try:
+        if button_id == 'delete-file-btn' and filename:
+            filepath = os.path.join(LOG_DIRECTORY, filename)
+            if os.path.exists(filepath):
+                os.remove(filepath)
+                logging.info(f"Deleted log file: {filename}")
+                status_message = f"✅ Successfully deleted {filename}"
+            else:
+                logging.warning(f"File not found: {filename}")
+                status_message = f"❌ File not found: {filename}"
+        
+        elif button_id == 'rename-file-btn' and filename and new_name:
+            old_filepath = os.path.join(LOG_DIRECTORY, filename)
+            
+            # Ensure new name has .log extension if not provided
+            if not new_name.endswith('.log'):
+                new_name = new_name + '.log'
+            
+            new_filepath = os.path.join(LOG_DIRECTORY, new_name)
+            
+            logging.info(f"Attempting to rename {old_filepath} to {new_filepath}")
+            
+            if os.path.exists(old_filepath):
+                if os.path.exists(new_filepath):
+                    logging.error(f"Target file already exists: {new_name}")
+                    status_message = f"❌ Target file already exists: {new_name}"
+                else:
+                    os.rename(old_filepath, new_filepath)
+                    logging.info(f"Successfully renamed {filename} to {new_name}")
+                    status_message = f"✅ Successfully renamed {filename} to {new_name}"
+            else:
+                logging.error(f"Source file not found: {filename}")
+                logging.info(f"Available files: {os.listdir(LOG_DIRECTORY)}")
+                status_message = f"❌ Source file not found: {filename}"
+        
+        # Refresh the list and clear inputs
+        files, options = update_log_files_list(1, 0)
+        return files, options, "", "", status_message
+        
+    except Exception as e:
+        logging.error(f"Error in file operation: {e}")
+        files, options = update_log_files_list(1, 0)
+        return files, options, "", "", f"❌ Error: {str(e)}"
+
+@app.callback(
+    Output('playback-status', 'children'),
+    Output('play-btn', 'disabled'),
+    Output('pause-btn', 'disabled'),
+    Output('stop-playback-btn', 'disabled'),
+    Input('play-btn', 'n_clicks'),
+    Input('pause-btn', 'n_clicks'),
+    Input('stop-playback-btn', 'n_clicks'),
+    Input('interval-component', 'n_intervals'),
+    State('selected-log-file', 'value'),
+    prevent_initial_call=True
+)
+def handle_playback_controls(play_clicks, pause_clicks, stop_clicks, n_intervals, selected_file):
+    try:
+        ctx = dash.callback_context
+        
+        if ctx.triggered:
+            button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+            
+            if button_id == 'play-btn' and selected_file:
+                if telemetry.playback_mode and telemetry.playback_paused:
+                    telemetry.resume_playback()
+                else:
+                    success = telemetry.start_playback(selected_file)
+                    if not success:
+                        return "Error loading log file", False, True, True
+            elif button_id == 'pause-btn':
+                telemetry.pause_playback()
+            elif button_id == 'stop-playback-btn':
+                telemetry.stop_playback()
+        
+        # Update status and button states
+        if telemetry.playback_mode:
+            if telemetry.playback_paused:
+                status = f"Paused at {telemetry.playback_index}/{len(telemetry.playback_data)}"
+                return status, False, False, False  # play enabled, pause enabled, stop enabled
+            else:
+                status = f"Playing {telemetry.playback_index}/{len(telemetry.playback_data)}"
+                return status, True, False, False   # play disabled, pause enabled, stop enabled
+        else:
+            return "No playback active", False, True, True  # play enabled, pause/stop disabled
+    
+    except Exception as e:
+        logging.error(f"Error in playback controls: {e}")
+        return f"Error: {str(e)}", False, True, True
         
 @app.callback(
     Output('voltage-status-indicator', 'children'),
