@@ -1,5 +1,6 @@
 import dash
 from dash import dcc, html, Input, Output, callback
+from dash.dependencies import State
 import plotly.graph_objs as go
 import plotly.express as px
 import pandas as pd
@@ -11,22 +12,32 @@ import time
 from datetime import datetime, timedelta
 import logging
 import os
+import pathlib
 
 # Configuration
 API_ENDPOINT = 'http://localhost:5000/api/telemetry'  # Your API endpoint
 API_TIMEOUT = 2  # seconds
-API_POLL_RATE = 0.1  # seconds between API calls (10 Hz)
+API_POLL_RATE = 0.05  # seconds between API calls (2 Hz)
 LOG_DIRECTORY = 'telemetry_logs'
-UPDATE_INTERVAL = 100  # milliseconds
+UPDATE_INTERVAL = 50  # milliseconds (2 Hz)
 
-# Font Configuration - Change these to customize fonts throughout the dashboard
-PRIMARY_FONT = 'Arial, sans-serif'  # Main UI font (restored to original)
-CHART_FONT = 'Arial'  # Chart text font
+CHART_FONT = 'Arial'
 CHART_FONT_SIZE = 12
 TITLE_FONT_SIZE = 16
 
 # UI Configuration
 BORDER_RADIUS = 20  # Corner rounding for containers (px)
+
+MAX_POINTS = 100
+initial_data = {
+    'timestamp': [datetime.now().isoformat()] * MAX_POINTS,
+    'vehicle_speed': [0] * MAX_POINTS,
+    'battery_voltage': [0] * MAX_POINTS,
+    'battery_soc': [0] * MAX_POINTS,
+    'min_cell_temp': [0] * MAX_POINTS,
+    'max_cell_temp': [0] * MAX_POINTS,
+    'inverter_temp': [0] * MAX_POINTS
+}
 
 # Ensure log directory exists
 os.makedirs(LOG_DIRECTORY, exist_ok=True)
@@ -46,8 +57,8 @@ class TelemetryReceiver:
         self.data_queue = queue.Queue()
         self.api_available = False
         self.running = False
-        self.mock_mode = True  # Set to False when connecting to real hardware
-        
+        self.mock_mode = True
+
         # Data storage for plotting
         self.max_points = 100
         self.data_history = {
@@ -161,27 +172,24 @@ class TelemetryReceiver:
         while self.running:
             try:
                 if self.mock_mode:
-                    # Generate mock data
                     data = self.generate_mock_data()
                     time.sleep(API_POLL_RATE)
                 else:
-                    # Fetch from API
                     data = self.fetch_api_data()
                     if data is None:
                         time.sleep(1)
                         continue
                     time.sleep(API_POLL_RATE)
 
-                # Add to queue and history
-                self.data_queue.put(data)
-                self.add_to_history(data)
-                
-                # Log data
-                logging.info(f"Telemetry: {data}")
-                
+                # The thread's ONLY job is to put data on the queue
+                if data:
+                    self.data_queue.put(data)
+                    logging.info(f"Telemetry: {data}")
+
             except Exception as e:
                 logging.error(f"Error in data receiver: {e}")
                 time.sleep(1)
+    
     
     def add_to_history(self, data):
         """Add data point to history for plotting"""
@@ -220,6 +228,10 @@ telemetry.start()
 # Initialize Dash app
 app = dash.Dash(__name__)
 app.title = "Zephyrus Live Telemetry"
+
+template_path = str(pathlib.Path(__file__).parent / "templates" / "index.html")
+with open(template_path, 'r') as f:
+    app.index_string = f.read()
 
 # Define the layout
 app.layout = html.Div([
@@ -285,19 +297,61 @@ app.layout = html.Div([
 # Callbacks for updating charts
 @app.callback(
     Output('telemetry-store', 'data'),
-    Input('interval-component', 'n_intervals')
+    Input('interval-component', 'n_intervals'),
+    State('telemetry-store', 'data')  # Get the current state of the data
 )
-def update_telemetry_store(n):
-    """Update telemetry data store"""
-    return {
-        'timestamp': [t.isoformat() for t in telemetry.data_history['timestamp']],
-        'vehicle_speed': telemetry.data_history['vehicle_speed'],
-        'battery_voltage': telemetry.data_history['battery_voltage'],
-        'battery_soc': telemetry.data_history['battery_soc'],
-        'min_cell_temp': telemetry.data_history['min_cell_temp'],
-        'max_cell_temp': telemetry.data_history['max_cell_temp'],
-        'inverter_temp': telemetry.data_history['inverter_temp']
-    }
+def update_telemetry_store(n, existing_data):
+    """
+    Pull data from the queue and update the store.
+    This is the new, robust way to handle state.
+    """
+    # On first run, initialize the data store
+    if existing_data is None:
+        return initial_data
+
+    # Create a copy to modify
+    updated_data = existing_data.copy()
+    
+    # Pull all available data from the queue
+    new_data_points = []
+    while not telemetry.data_queue.empty():
+        try:
+            data_point = telemetry.data_queue.get_nowait()
+            new_data_points.append(data_point)
+        except queue.Empty:
+            break
+    
+    # Process all new data points at once
+    for data_point in new_data_points:
+        # Append new data
+        for key, value in data_point.items():
+            if key in updated_data:
+                updated_data[key].append(value)
+
+    # Trim the data to MAX_POINTS (only do this once after processing all new data)
+    if new_data_points:  # Only trim if we actually added new data
+        for key in updated_data:
+            updated_data[key] = updated_data[key][-MAX_POINTS:]
+        logging.info(f"Processed {len(new_data_points)} new data points")
+            
+    return updated_data
+
+@app.callback(
+    Output('connection-status', 'children'),
+    Input('telemetry-store', 'data')
+)
+def update_connection_status(data):
+    """Update connection status indicator"""
+    if data and data['timestamp']:
+        latest_time = datetime.fromisoformat(data['timestamp'][-1])
+        time_diff = (datetime.now() - latest_time).total_seconds()
+        
+        if time_diff < 2:  # Data is fresh (less than 2 seconds old)
+            return "🟢 Live Data"
+        else:
+            return f"🟡 Stale Data ({time_diff:.1f}s old)"
+    else:
+        return "🔴 No Data"
 
 @app.callback(
     Output('speed-gauge', 'figure'),
@@ -567,119 +621,6 @@ def update_temperature_timeseries(data):
         legend=dict(font=dict(color='#e8e8e8', family=CHART_FONT))
     )
     return fig
-
-# Add custom CSS
-app.index_string = '''
-<!DOCTYPE html>
-<html>
-    <head>
-        {%metas%}
-        <title>{%title%}</title>
-        {%favicon%}
-        {%css%}
-        <style>
-            body {
-                font-family: ''' + PRIMARY_FONT + ''';
-                margin: 0;
-                padding: 0;
-                background-color: #0f1419;
-                color: #e8e8e8;
-            }
-            .main-container {
-                max-width: 1400px;
-                margin: 0 auto;
-                padding: 20px;
-            }
-            .header {
-                background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-                color: #e8e8e8;
-                padding: 20px;
-                border-radius: ''' + str(BORDER_RADIUS) + '''px;
-                margin-bottom: 20px;
-                border: 1px solid #ffd700;
-                box-shadow: 0 4px 20px rgba(255, 215, 0, 0.1);
-            }
-            .header-title {
-                margin: 0;
-                font-size: 2.5em;
-                text-align: center;
-                color: #ffd700;
-                text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-            }
-            .status-bar {
-                display: flex;
-                justify-content: space-between;
-                margin-top: 15px;
-                font-size: 1.1em;
-            }
-            .status-indicator {
-                color: #ffd700;
-                font-weight: bold;
-            }
-            .mode-indicator {
-                color: #e8e8e8;
-                font-weight: 500;
-            }
-            .gauge-row, .mixed-row, .chart-row {
-                display: flex;
-                gap: 20px;
-                margin-bottom: 20px;
-            }
-            .gauge-container {
-                flex: 1;
-                background: #1e2329;
-                border-radius: ''' + str(BORDER_RADIUS) + '''px;
-                box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-                border: 1px solid #2c3e50;
-                transition: transform 0.2s ease, box-shadow 0.2s ease;
-            }
-            .gauge-container:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 6px 20px rgba(255, 215, 0, 0.15);
-            }
-            .chart-container {
-                flex: 1;
-                background: #1e2329;
-                border-radius: ''' + str(BORDER_RADIUS) + '''px;
-                box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-                border: 1px solid #2c3e50;
-                transition: transform 0.2s ease, box-shadow 0.2s ease;
-            }
-            .chart-container:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 6px 20px rgba(255, 215, 0, 0.15);
-            }
-            .chart-container-full {
-                width: 100%;
-                background: #1e2329;
-                border-radius: ''' + str(BORDER_RADIUS) + '''px;
-                box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-                border: 1px solid #2c3e50;
-                transition: transform 0.2s ease, box-shadow 0.2s ease;
-            }
-            .chart-container-full:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 6px 20px rgba(255, 215, 0, 0.15);
-            }
-            /* Dark theme for plotly charts */
-            .js-plotly-plot .plotly .modebar {
-                background-color: #2c3e50 !important;
-            }
-            .js-plotly-plot .plotly .modebar-btn {
-                color: #e8e8e8 !important;
-            }
-        </style>
-    </head>
-    <body>
-        {%app_entry%}
-        <footer>
-            {%config%}
-            {%scripts%}
-            {%renderer%}
-        </footer>
-    </body>
-</html>
-'''
 
 if __name__ == '__main__':
     try:
