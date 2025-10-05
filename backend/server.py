@@ -15,8 +15,8 @@ SIGNAL_TYPES = {
     "max_cell_temp": { "Time" : int, "Data": int},
     "DTC1": { "Time" : int, "Data": int},
     # "raw_rpm": { "Time" : int, "Data": float},
-    "mph": { "Time" : int, "Data": float},
-    "wheel_rpm": { "Time" : int, "Data": float}
+    "speedMPH": { "Time" : int, "Data": float},
+    "rpm_speed": { "Time" : int, "Data": float}
 }
 
 @app.get("/data/receive")
