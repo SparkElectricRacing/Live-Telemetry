@@ -157,6 +157,48 @@ def read_from_arduino_v2(port_name, baud_rate):
         time.sleep(0.1)
     # Add error checks for port etc
 
+def read_from_arduino_v3(port_name, baud_rate):
+    ser = serial.Serial(port_name, baud_rate, timeout = 1)
+    time.sleep(2)
+    try:
+        while True:
+            if ser.in_waiting > 0:
+                line = ser.readline().decode('utf-8', errors='ignore').rstrip()
+                print(line)
+    except KeyboardInterrupt:
+        print("Exiting...")
+        ser.close()
+
+# def __main__():
+
+read_bin_file("output.bin")
+
+port_name = "/dev/ttyUSB0"
+baud_rate = 115200
+
+def read_from_arduino_v4(port_name, baud_rate):
+    ser = serial.Serial(port_name, baud_rate, timeout = 1)
+    time.sleep(2)
+    try:
+        while True:
+            while ser.in_waiting > 16:
+                line = ser.readline().decode('utf-8').rstrip()
+                hcSanValA, signal_name, timestamp, data, hcSanValB = parse_in(line)
+                if signal_name == "raw_rpm":
+                    rpmSpeed = rpm_speed(data)
+                    entry = [hcSanValA, "rpm_speed", timestamp, rpmSpeed, hcSanValB]
+                    gv.buffer.put(entry)
+                    speedMPH = mph_speed(rpmSpeed)
+                    entry = [hcSanValA, "speedMPH", timestamp, speedMPH, hcSanValB]
+                    gv.buffer.put(entry)
+                else:
+                    entry = [hcSanValA, signal_name, timestamp, data, hcSanValB]
+                    gv.buffer.put(entry)
+            time.sleep(0.1)
+    except KeyboardInterrupt:
+        print("Exiting...")
+        ser.close()
+
 # def __main__():
 
 read_bin_file("output.bin")
