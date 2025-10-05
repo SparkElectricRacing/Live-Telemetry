@@ -2,6 +2,7 @@ import dash
 from dash import dcc, html, Input, Output, callback
 import plotly.graph_objs as go
 import plotly.express as px
+from plotly.subplots import make_subplots
 import pandas as pd
 import json
 import serial
@@ -597,13 +598,35 @@ def update_graph(selected_log_file):
         # Ensure the timestamp is in a plottable format
         df['timestamp'] = pd.to_datetime(df['timestamp'])
 
-        # Create a line chart using the parsed data
-        fig = px.line(
-            df, 
-            x='timestamp', 
-            y=['vehicle_speed', 'battery_soc', 'inverter_temp'], # Choose which columns to plot
+        # Initialize a figure with 3 vertically stacked subplots
+        fig = make_subplots(
+            rows=3, 
+            cols=1,
+            subplot_titles=("Vehicle Speed", "Battery SOC", "Inverter Temperature"),
+            shared_xaxes=True # Links the zoom/pan of all x-axes
+        )
+
+        # Add the each line chart (trace) as a row
+        fig.add_trace(
+            go.Scatter(x=df['timestamp'], y=df['vehicle_speed'], mode='lines', name='Speed'),
+            row=1, col=1
+        )
+        fig.add_trace(
+            go.Scatter(x=df['timestamp'], y=df['battery_soc'], mode='lines', name='SOC'),
+            row=2, col=1
+        )
+        fig.add_trace(
+            go.Scatter(x=df['timestamp'], y=df['inverter_temp'], mode='lines', name='Inverter Temp'),
+            row=3, col=1
+        )
+
+        # Update the layout for a clean look
+        fig.update_layout(
             title=f'Telemetry Data from {selected_log_file}',
-            labels={'value': 'Value', 'variable': 'Metric'}
+            height=800, # Adjust height as needed
+            showlegend=False, # Hides the legend as titles are clear
+            plot_bgcolor='#1e2329',
+            paper_bgcolor='#1e2329'
         )
         return fig
 
