@@ -9,23 +9,7 @@ import global_vars as gv
 # [7-14*] data, big-endian? (i need to double check the endianness but memcpy gives the correct result either way)
 # [15*] hardcoded sanity assert value (0x9a)
 # So 16 bytes / entry gives us a lot of wiggle room for the amt of data we send over
-
 SIGNALS = {
-    (0x7C, 0): "avg_temp",
-    (0x7C, 1): "avg_cell_voltage",
-    (0x7C, 2): "pack_voltage",
-    (0x7C, 3): "pack_SOC",
-    (0x7C, 4): "is_charging",
-    (0x7D, 0): "low_cell_voltage",
-    (0x7D, 1): "high_cell_voltage",
-    (0x7D, 2): "max_cell_temp",
-    (0x7D, 3): "DTC1",
-    (0xA5, 0): "raw_rpm",
-}
-
-def parse_in(inp):
-    
-    signals = {
         (0x7C, 0): "avg_temp",
         (0x7C, 1): "avg_cell_voltage",
         (0x7C, 2): "pack_voltage",
@@ -37,25 +21,29 @@ def parse_in(inp):
         (0x7D, 3): "DTC1",
         (0xA5, 0): "raw_rpm",
     }
-    if type(inp) == bytes:
-        inp = ''.join(f'{byte:08b}' for byte in inp)
-    if type(inp) == str:
-        inp = int(inp, 2)
+
+def parse_in(inp):
+    inp = int.from_bytes(inp, byteorder='big') # quicker
+    # if type(inp) == bytes:
+    #     inp = ''.join(f'{byte:08b}' for byte in inp)
+    # if type(inp) == str:
+    #     inp = int(inp, 2)
     if type(inp) == int or type(inp) == float:
-        inp = inp - ((inp >> 128) << 128)
+        # inp = inp & 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF # 16 byte to ensure only dealing with 16 bytes
         hcSanValB = inp & 0xFF 
         data = (inp >> 8) & 0xFFFFFFFFFFFFFFFF # 8 byte
         timestamp = (inp >> 72) & 0xFFFFFFFF # 4 byte
         subId = (inp >> 104) & 0xFF
         canId = (inp >> 112) & 0xFF
         hcSanValA = (inp >> 120) & 0xFF
-        signal_name = signals.get((canId, subId), "")
+        signal_name = SIGNALS.get((canId, subId), "")
         return hcSanValA, signal_name, timestamp, data, hcSanValB
     else: 
         print(type(inp))
         return 0, "", 0, 0, 0
 
 def read_bin_file(file):
+    # look at changing logic to include := walrus operator while loop with conditional to verify 16 bytes acc taken
     with open(file, 'rb') as f:
         while True:
             line = f.read(16)

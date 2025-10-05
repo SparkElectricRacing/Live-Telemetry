@@ -1,10 +1,11 @@
 from fastapi import FastAPI
 from backend import global_vars as gv
+from queue import Empty
 
 app = FastAPI()
 
-@app.get("/data/recieve")
-def read_root():
+@app.get("/data/receive")
+async def read_root():
     size = gv.buffer.qsize()
     
     # Inputs
@@ -33,13 +34,18 @@ def read_root():
         "DTC1": [],
         "raw_rpm": []
     }
+    rows = []
     for _ in range(size):
-        row = gv.buffer.get()
+        try:
+            rows.append(gv.buffer.get_nowait())
+        except Empty:
+            break
+        
+    for row in rows:
         if row[0] == 0xBB & row[4] == 0x9A: # Will not receive data that does not have correct sanity bytes
-            row_object = {
-                "TIMESTAMP": row[2],
-                "DATA": row[3]
-            }
             if row[1] in signals:
-                signals[row[1]].append(row_object)
+                signals[row[1]].append({
+                    "TIMESTAMP": row[2],
+                    "DATA": row[3]
+                })
     return signals
