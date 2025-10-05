@@ -11,6 +11,7 @@ import time
 from datetime import datetime, timedelta
 import logging
 import os
+import ast  # Abstract Syntax Tree library to safely evaluate string literals
 
 # Configuration
 SERIAL_PORT = 'COM3'  # Adjust for your system (Linux: '/dev/ttyUSB0', Mac: '/dev/cu.usbserial-*')
@@ -249,12 +250,11 @@ app.layout = html.Div([
     dcc.Dropdown(
         id='log-dropdown',
         options=[{'label': log_name, 'value': log_name} for log_name in available_logs],
-        # You can set an initial value if you want
-        # value=available_logs[0] 
+        style={'color': "#413C26"}
     ),
 
     # The Graph component will be updated by the callback
-    dcc.Graph(id='telemetry-graph')
+    dcc.Graph(id='telemetry-graph'),
     
     # Store component for data
     dcc.Store(id='telemetry-store')
@@ -560,18 +560,60 @@ def update_graph(selected_log_file):
     # Construct the full path to the selected log file
     file_path = os.path.join(LOG_DIRECTORY, selected_log_file)
 
-    try:
-        # TODO: Read in log data with pandas
-        # Read the log data using pandas
-        # The below doesn't work because log files aren't stored as '.csv'
-        df = pd.read_csv(file_path)
+    # This list will store the dictionary from each valid log line
+    data_records = []
 
-        # TODO: Create charts based on the data from a log file
-    
+    try:
+        # Open and read the log file line by line
+        with open(file_path, 'r') as f:
+            for line in f:
+                try:
+                    # Find the start of the dictionary (the first '{')
+                    start_index = line.find('{')
+                    
+                    # If a dictionary is found on the line
+                    if start_index != -1:
+                        dict_str = line[start_index:]
+                        
+                        # Safely evaluate the string as a Python dictionary
+                        # ast.literal_eval is much safer than eval()
+                        log_dict = ast.literal_eval(dict_str)
+                        
+                        data_records.append(log_dict)
+                
+                except (ValueError, SyntaxError):
+                    # This handles malformed lines within the file, just skip them
+                    print(f"Skipping malformed line in {selected_log_file}: {line.strip()}")
+                    continue
+
+        # If no valid data was found, return an empty figure
+        if not data_records:
+            print(f"Warning: No valid data records found in {selected_log_file}")
+            return {}
+
+        # Create a pandas DataFrame from the list of dictionaries
+        df = pd.DataFrame.from_records(data_records)
+
+        # Ensure the timestamp is in a plottable format
+        df['timestamp'] = pd.to_datetime(df['timestamp'])
+
+        # Create a line chart using the parsed data
+        fig = px.line(
+            df, 
+            x='timestamp', 
+            y=['vehicle_speed', 'battery_soc', 'inverter_temp'], # Choose which columns to plot
+            title=f'Telemetry Data from {selected_log_file}',
+            labels={'value': 'Value', 'variable': 'Metric'}
+        )
+        return fig
+
+    except FileNotFoundError:
+        print(f"Error: The file {selected_log_file} was not found.")
+        return {} # Return an empty figure
     except Exception as e:
-        # Handle cases where the file might be empty or corrupt
-        print(f"Error reading file {selected_log_file}: {e}")
-        return {} # Return an empty figure on error
+        print(f"An unexpected error occurred while processing {selected_log_file}: {e}")
+        return {} # Return an empty figure on any other error
+
 
 # Add custom CSS
 app.index_string = '''
