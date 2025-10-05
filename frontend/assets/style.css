@@ -70,6 +70,17 @@ body {
     align-items: center;
     margin-top: 15px;
     font-size: 1.1em;
+    gap: 20px;
+}
+
+.mode-selector {
+    display: flex;
+    align-items: center;
+    color: var(--text-color);
+}
+
+.mode-selector label {
+    color: var(--text-color);
 }
 
 /* Control Buttons */
@@ -303,4 +314,53 @@ body {
     border-radius: 4px;
     font-weight: bold;
     min-height: 20px;
+}
+
+/* Dropdown styling */
+.Select-control {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid #34495e !important;
+    color: var(--text-color) !important;
+}
+
+.Select-value-label,
+.Select-placeholder {
+    color: var(--text-color) !important;
+}
+
+.Select-menu-outer {
+    background-color: var(--container-bg) !important;
+    border: 1px solid #34495e !important;
+}
+
+.Select-option {
+    background-color: var(--container-bg) !important;
+    color: var(--text-color) !important;
+    font-size: 0.9em !important;
+    padding: 8px 12px !important;
+}
+
+.Select-option:hover {
+    background-color: rgba(255, 215, 0, 0.2) !important;
+    color: var(--text-color) !important;
+}
+
+.Select-option.is-selected {
+    background-color: var(--primary-color) !important;
+    color: #1e2329 !important;
+}
+
+/* Modern dropdown for newer Dash versions */
+._dash-dropdown {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+._dash-dropdown .Select-control {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid #34495e !important;
+}
+
+._dash-dropdown .Select-menu {
+    background-color: var(--container-bg) !important;
+    border: 1px solid #34495e !important;
 }

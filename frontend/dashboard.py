@@ -42,12 +42,11 @@ initial_data = {
 # Ensure log directory exists
 os.makedirs(LOG_DIRECTORY, exist_ok=True)
 
-# Set up logging
+# Set up logging - initially just console, file handler added when collection starts
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler(f'{LOG_DIRECTORY}/telemetry_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log'),
         logging.StreamHandler()
     ]
 )
@@ -66,6 +65,9 @@ class TelemetryReceiver:
         self.playback_index = 0
         self.playback_paused = False
 
+        # Logging
+        self.current_log_handler = None
+
         # Data storage for plotting
         self.max_points = 100
         self.data_history = {
@@ -77,6 +79,30 @@ class TelemetryReceiver:
             'max_cell_temp': [],
             'inverter_temp': []
         }
+    
+    def start_new_log_file(self):
+        """Create a new log file for this collection session"""
+        # Remove existing file handler if any
+        if self.current_log_handler:
+            logging.getLogger().removeHandler(self.current_log_handler)
+            self.current_log_handler.close()
+        
+        # Create new log file with timestamp
+        log_filename = f'{LOG_DIRECTORY}/telemetry_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log'
+        self.current_log_handler = logging.FileHandler(log_filename)
+        self.current_log_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+        logging.getLogger().addHandler(self.current_log_handler)
+        
+        logging.info(f"📁 Started new log file: {log_filename}")
+        return log_filename
+    
+    def stop_log_file(self):
+        """Stop logging to file"""
+        if self.current_log_handler:
+            logging.info("📁 Closing log file")
+            logging.getLogger().removeHandler(self.current_log_handler)
+            self.current_log_handler.close()
+            self.current_log_handler = None
         
     def test_api_connection(self):
         """Test if API endpoint is available"""
@@ -175,41 +201,61 @@ class TelemetryReceiver:
     
     def data_receiver_thread(self):
         """Background thread for receiving data"""
+        logging.info(f"🚀 Data receiver thread started - Mock: {self.mock_mode}, Playback: {self.playback_mode}")
         while self.running:
             try:
+                data = None
+                
+                # Playback mode has highest priority and blocks all other data generation
                 if self.playback_mode:
                     if not self.playback_paused and self.playback_index < len(self.playback_data):
                         data = self.playback_data[self.playback_index]
                         self.playback_index += 1
+                        logging.info(f"▶️ Playback: {self.playback_index}/{len(self.playback_data)} - Speed: {data['vehicle_speed']:.1f} km/h")
                         time.sleep(API_POLL_RATE)
                     elif self.playback_index >= len(self.playback_data):
-                        # Playback finished
-                        self.playback_mode = False
-                        logging.info("Playback finished")
+                        # Playback finished - restore normal mode
+                        logging.info("🏁 Playback finished, restoring normal mode")
+                        self.stop_playback()
                         time.sleep(1)
                         continue
                     else:
                         # Paused
                         time.sleep(0.1)
                         continue
-                elif self.mock_mode:
+                # Only generate other data if NOT in playback mode
+                elif self.mock_mode and not self.playback_mode:
                     data = self.generate_mock_data()
+                    logging.info(f"🎲 Generated mock data: {data['vehicle_speed']:.1f} km/h, {data['battery_voltage']:.1f}V")
                     time.sleep(API_POLL_RATE)
-                else:
+                elif not self.playback_mode:  # API mode, but only if not in playback
                     data = self.fetch_api_data()
                     if data is None:
+                        logging.info("🌐 No API data received, retrying...")
                         time.sleep(1)
                         continue
+                    logging.info(f"🌐 Received API data: {data}")
                     time.sleep(API_POLL_RATE)
+                else:
+                    # This should not happen, but just in case
+                    logging.warning("⚠️ No data mode active, sleeping...")
+                    time.sleep(1)
+                    continue
 
-                # The thread's ONLY job is to put data on the queue
+                # Put data on the queue and log for playback
                 if data:
                     self.data_queue.put(data)
+                    logging.debug(f"📦 Added data to queue. Queue size: {self.data_queue.qsize()}")
+                    
+                    # Log telemetry data in proper format for future playback
+                    # Only log if we're in mock or API mode (not during playback)
                     if not self.playback_mode:
-                        logging.info(f"Telemetry: {data}")
+                        logging.info(f"Telemetry: {json.dumps(data)}")
+                else:
+                    logging.warning(f"❌ No data generated - Mock: {self.mock_mode}, Playback: {self.playback_mode}, API: {self.api_available}")
 
             except Exception as e:
-                logging.error(f"Error in data receiver: {e}")
+                logging.error(f"💥 Error in data receiver: {e}")
                 time.sleep(1)
     
     
@@ -231,17 +277,34 @@ class TelemetryReceiver:
     
     def start(self):
         """Start the telemetry receiver"""
+        # Stop any existing thread first
+        if hasattr(self, 'thread') and self.thread.is_alive():
+            self.stop()
+            time.sleep(0.1)  # Give it a moment to stop
+        
+        # Start new log file for this collection session (except for playback)
+        if not self.playback_mode:
+            self.start_new_log_file()
+        
         self.running = True
-        self.test_api_connection()
+        # Don't automatically test API connection here - preserve current mode settings
+        # Only test API if we're not in mock or playback mode
+        if not self.mock_mode and not self.playback_mode:
+            self.test_api_connection()
+        
+        # Always start a new thread
         self.thread = threading.Thread(target=self.data_receiver_thread)
         self.thread.daemon = True
         self.thread.start()
-        logging.info("Telemetry receiver started")
+        
+        logging.info(f"Telemetry receiver started - Mock: {self.mock_mode}, API: {self.api_available}, Playback: {self.playback_mode}")
     
     def stop(self):
         """Stop the telemetry receiver"""
         self.running = False
         self.playback_mode = False
+        # Stop logging to file
+        self.stop_log_file()
         logging.info("Telemetry receiver stopped")
     
     def load_log_file(self, log_file_path):
@@ -251,37 +314,68 @@ class TelemetryReceiver:
             import json
             
             self.playback_data = []
+            logging.info(f"Attempting to load log file: {log_file_path}")
+            
             with open(log_file_path, 'r') as f:
+                line_count = 0
                 for line in f:
+                    line_count += 1
                     # Extract JSON data from log lines
                     if 'Telemetry:' in line:
                         # Find the JSON part after "Telemetry: "
                         json_start = line.find('Telemetry: ') + len('Telemetry: ')
                         json_str = line[json_start:].strip()
                         try:
-                            data = json.loads(json_str)
-                            self.playback_data.append(data)
-                        except json.JSONDecodeError:
+                            # Clean up common JSON issues
+                            json_str = json_str.replace("'", '"')  # Replace single quotes with double quotes
+                            if json_str.startswith('{') and json_str.endswith('}'):
+                                data = json.loads(json_str)
+                                # Validate that we have the required fields
+                                required_fields = ['timestamp', 'vehicle_speed', 'battery_voltage', 'battery_soc']
+                                if all(field in data for field in required_fields):
+                                    self.playback_data.append(data)
+                                else:
+                                    logging.warning(f"Missing required fields on line {line_count}")
+                            else:
+                                logging.warning(f"Invalid JSON format on line {line_count}: {json_str[:50]}...")
+                        except json.JSONDecodeError as e:
+                            logging.warning(f"Failed to parse JSON on line {line_count}: {e} - Content: {json_str[:100]}...")
+                            continue
+                        except Exception as e:
+                            logging.warning(f"Error processing line {line_count}: {e}")
                             continue
             
-            logging.info(f"Loaded {len(self.playback_data)} data points from {log_file_path}")
+            logging.info(f"Processed {line_count} lines, loaded {len(self.playback_data)} data points from {log_file_path}")
+            if len(self.playback_data) > 0:
+                logging.info(f"First data point: {self.playback_data[0]}")
+                logging.info(f"Last data point: {self.playback_data[-1]}")
             return len(self.playback_data) > 0
         except Exception as e:
-            logging.error(f"Error loading log file: {e}")
+            logging.error(f"Error loading log file {log_file_path}: {e}")
             return False
     
     def start_playback(self, log_file_path):
         """Start playback from a log file"""
+        logging.info(f"Attempting to start playback of: {log_file_path}")
+        
         if self.load_log_file(log_file_path):
+            # Force playback mode - this overrides everything else
+            logging.info("Log file loaded successfully, starting playback mode")
             self.playback_mode = True
             self.playback_index = 0
             self.playback_paused = False
             self.playback_file = log_file_path
+            
+            # Make sure the receiver is running
             if not self.running:
                 self.start()
-            logging.info(f"Started playback of {log_file_path}")
+            
+            logging.info(f"✅ PLAYBACK STARTED: {log_file_path} with {len(self.playback_data)} data points")
+            logging.info(f"Playback mode: {self.playback_mode}, Mock mode: {self.mock_mode}")
             return True
-        return False
+        else:
+            logging.error(f"❌ Failed to load log file: {log_file_path}")
+            return False
     
     def pause_playback(self):
         """Pause playback"""
@@ -294,15 +388,16 @@ class TelemetryReceiver:
         logging.info("Playback resumed")
     
     def stop_playback(self):
-        """Stop playback and return to normal mode"""
+        """Stop playback and return to idle mode"""
         self.playback_mode = False
         self.playback_paused = False
         self.playback_index = 0
-        logging.info("Playback stopped")
+        # DON'T auto-restart other data generation - let user control this
+        logging.info("Playback stopped, returning to idle mode")
 
-# Initialize telemetry receiver
+# Initialize telemetry receiver but DON'T auto-start
 telemetry = TelemetryReceiver()
-telemetry.start()
+# telemetry.start()  # Removed auto-start - user must click "Start Collection"
 
 # Initialize Dash app
 app = dash.Dash(__name__, suppress_callback_exceptions=True)
@@ -318,8 +413,19 @@ app.layout = html.Div([
         html.H1("Zephyrus Live Telemetry Dashboard", className="header-title"),
         html.Div([
             html.Div(id="connection-status", className="status-indicator"),
-            html.Div(f"Mode: {'Mock Data' if telemetry.mock_mode else 'Live API'}", 
-                    className="mode-indicator"),
+            html.Div([
+                html.Label("Data Source:", style={"margin-right": "10px", "font-weight": "bold"}),
+                dcc.Dropdown(
+                    id="data-mode-selector",
+                    options=[
+                        {"label": "Mock Data", "value": "mock"},
+                        {"label": "Live API", "value": "live"}, 
+                        {"label": "Playback", "value": "playback"}
+                    ],
+                    value="mock",
+                    style={"width": "150px", "color": "#000"}
+                )
+            ], className="mode-selector"),
             html.Div([
                 html.Button("Stop Collection", id="stop-btn", n_clicks=0, className="control-btn stop-btn"),
                 html.Button("Start Collection", id="start-btn", n_clicks=0, className="control-btn start-btn")
@@ -385,12 +491,16 @@ app.layout = html.Div([
                         html.Button("Delete", id="delete-file-btn", n_clicks=0, className="control-btn stop-btn"),
                         html.Button("Rename", id="rename-file-btn", n_clicks=0, className="control-btn"),
                         dcc.Input(id="new-name-input", type="text", placeholder="New name", style={"width": "150px"}),
+                        html.Button("Delete All", id="delete-all-btn", n_clicks=0, className="control-btn stop-btn", 
+                                  style={"margin-left": "20px", "background-color": "#8B0000"})
                     ], className="file-operations", style={"margin-top": "10px"}),
                     html.Div(id="file-operation-status", className="operation-status")
                 ], className="log-list-container"),
                 html.Div([
                     html.H4("Playback Controls"),
                     html.Div([
+                        html.P("Set 'Data Source' to '▶️ Playback' mode above, then select a log file:", 
+                               style={"color": "#95a5a6", "font-style": "italic", "margin-bottom": "10px"}),
                         dcc.Dropdown(id="selected-log-file", placeholder="Select a log file for playback"),
                         html.Div([
                             html.Button("Play", id="play-btn", n_clicks=0, className="control-btn start-btn"),
@@ -418,23 +528,50 @@ app.layout = html.Div([
     State('telemetry-store', 'data')
 )
 def update_telemetry_store(n, existing_data):
+    logging.info(f"🔄 CALLBACK: Telemetry store update called (interval {n})")
+    logging.info(f"   📦 Queue size: {telemetry.data_queue.qsize()}")
+    logging.info(f"   🔧 Telemetry running: {telemetry.running}")
+    logging.info(f"   🎲 Mock mode: {telemetry.mock_mode}")
+    logging.info(f"   ▶️ Playback mode: {telemetry.playback_mode}")
+    
     if existing_data is None:
-        return initial_data
+        existing_data = initial_data
+        logging.info(f"   🆕 Using initial data structure")
+    
     updated_data = existing_data.copy()
     new_data_points = []
+    
+    # Get all available data from the queue
+    queue_attempts = 0
     while not telemetry.data_queue.empty():
         try:
             data_point = telemetry.data_queue.get_nowait()
             new_data_points.append(data_point)
+            queue_attempts += 1
+            logging.info(f"   📥 Got data point {queue_attempts}: {data_point['vehicle_speed']:.1f} km/h")
         except queue.Empty:
             break
-    for data_point in new_data_points:
+    
+    logging.info(f"   📋 Total data points retrieved from queue: {len(new_data_points)}")
+    
+    # Add new data points to the store
+    for i, data_point in enumerate(new_data_points):
+        logging.info(f"   📝 Processing data point {i+1}: {data_point}")
         for key, value in data_point.items():
             if key in updated_data:
                 updated_data[key].append(value)
+                logging.debug(f"      🔑 Added {key}: {value}")
+    
+    # Trim to max points if we have new data
     if new_data_points:
         for key in updated_data:
             updated_data[key] = updated_data[key][-MAX_POINTS:]
+        latest_speed = updated_data['vehicle_speed'][-1] if updated_data['vehicle_speed'] else 0
+        logging.info(f"📊 ✅ UI UPDATED with {len(new_data_points)} new data points. Latest speed: {latest_speed:.1f} km/h")
+        logging.info(f"📊 Current data store size: {len(updated_data['timestamp'])} points")
+    else:
+        logging.info(f"🔄 ❌ No new data points available - UI will not update")
+    
     return updated_data
 
 @app.callback(
@@ -449,18 +586,23 @@ def update_connection_status(data):
             return "⏸️ Playback Paused"
         else:
             return "▶️ Playing Back Data"
+    elif telemetry.mock_mode:
+        if data and data['timestamp']:
+            return "🎲 Mock Data Active"
+        else:
+            return "🎲 Mock Data Starting..."
     elif data and data['timestamp']:
         latest_time = datetime.fromisoformat(data['timestamp'][-1])
         time_diff = (datetime.now() - latest_time).total_seconds()
         if time_diff < 2:
-            return "🟢 Live Data"
+            return "🌐 Live API Data"
         else:
-            return f"🟡 Stale Data ({time_diff:.1f}s old)"
+            return f"🌐 Stale API Data ({time_diff:.1f}s old)"
     else:
         if telemetry.api_available:
             return "🟡 Server Not Responding"
         else:
-            return "🔴 No Data"
+            return "🔴 No Data Available"
 
 @app.callback(
     Output('start-btn', 'disabled'),
@@ -472,6 +614,7 @@ def update_connection_status(data):
 def handle_collection_controls(start_clicks, stop_clicks, page_load):
     ctx = dash.callback_context
     if not ctx.triggered:
+        # Set initial state based on telemetry.running status
         return not telemetry.running, telemetry.running
     
     button_id = ctx.triggered[0]['prop_id'].split('.')[0]
@@ -480,6 +623,7 @@ def handle_collection_controls(start_clicks, stop_clicks, page_load):
         if not telemetry.running:
             telemetry.start()
             logging.info("Data collection started by user")
+            logging.info(f"Mock mode: {telemetry.mock_mode}, API available: {telemetry.api_available}, Playback mode: {telemetry.playback_mode}")
         return True, False
     elif button_id == 'stop-btn':
         if telemetry.running:
@@ -488,6 +632,30 @@ def handle_collection_controls(start_clicks, stop_clicks, page_load):
         return False, True
     
     return not telemetry.running, telemetry.running
+
+@app.callback(
+    Output('data-mode-selector', 'value'),
+    Input('data-mode-selector', 'value'),
+    prevent_initial_call=True
+)
+def handle_mode_selection(selected_mode):
+    if selected_mode == "mock":
+        telemetry.stop_playback()  # Stop any playback
+        telemetry.mock_mode = True
+        telemetry.api_available = False
+        logging.info("Switched to Mock Data mode")
+    elif selected_mode == "live":
+        telemetry.stop_playback()  # Stop any playback
+        telemetry.mock_mode = False
+        telemetry.test_api_connection()  # Test API availability
+        logging.info("Switched to Live API mode")
+    elif selected_mode == "playback":
+        telemetry.stop_playback()  # Reset playback state
+        telemetry.mock_mode = False
+        telemetry.api_available = False
+        logging.info("Switched to Playback mode (select a file to start)")
+    
+    return selected_mode
 
 @app.callback(
     Output('error-notification', 'children'),
@@ -519,9 +687,11 @@ def update_error_notification(data, start_clicks, stop_clicks):
     Output('log-files-list', 'children'),
     Output('selected-log-file', 'options'),
     Input('refresh-logs-btn', 'n_clicks'),
-    Input('page-load-trigger', 'data')
+    Input('page-load-trigger', 'data'),
+    Input('start-btn', 'n_clicks'),
+    Input('stop-btn', 'n_clicks')
 )
-def update_log_files_list(n_clicks, page_load):
+def update_log_files_list(refresh_clicks, page_load, start_clicks, stop_clicks):
     try:
         log_files = []
         for filename in os.listdir(LOG_DIRECTORY):
@@ -554,7 +724,7 @@ def update_log_files_list(n_clicks, page_load):
             )
             
             dropdown_options.append({
-                'label': f"{log_file['filename']} ({log_file['size_kb']:.1f}KB)",
+                'label': f"{log_file['filename']} - {log_file['size_kb']:.1f}KB - {log_file['modified'].strftime('%m/%d %H:%M')}",
                 'value': log_file['filepath']
             })
         
@@ -571,11 +741,12 @@ def update_log_files_list(n_clicks, page_load):
     Output('file-operation-status', 'children'),
     Input('delete-file-btn', 'n_clicks'),
     Input('rename-file-btn', 'n_clicks'),
+    Input('delete-all-btn', 'n_clicks'),
     State('file-operation-input', 'value'),
     State('new-name-input', 'value'),
     prevent_initial_call=True
 )
-def handle_file_operations(delete_clicks, rename_clicks, filename, new_name):
+def handle_file_operations(delete_clicks, rename_clicks, delete_all_clicks, filename, new_name):
     ctx = dash.callback_context
     if not ctx.triggered:
         raise dash.exceptions.PreventUpdate
@@ -618,6 +789,25 @@ def handle_file_operations(delete_clicks, rename_clicks, filename, new_name):
                 logging.info(f"Available files: {os.listdir(LOG_DIRECTORY)}")
                 status_message = f"❌ Source file not found: {filename}"
         
+        elif button_id == 'delete-all-btn':
+            deleted_count = 0
+            try:
+                for filename in os.listdir(LOG_DIRECTORY):
+                    if filename.endswith('.log'):
+                        filepath = os.path.join(LOG_DIRECTORY, filename)
+                        os.remove(filepath)
+                        deleted_count += 1
+                        logging.info(f"Deleted log file: {filename}")
+                
+                if deleted_count > 0:
+                    status_message = f"✅ Successfully deleted {deleted_count} log files"
+                else:
+                    status_message = "ℹ️ No log files found to delete"
+                    
+            except Exception as e:
+                logging.error(f"Error during delete all: {e}")
+                status_message = f"❌ Error deleting files: {str(e)}"
+        
         # Refresh the list and clear inputs
         files, options = update_log_files_list(1, 0)
         return files, options, "", "", status_message
@@ -647,12 +837,20 @@ def handle_playback_controls(play_clicks, pause_clicks, stop_clicks, n_intervals
             button_id = ctx.triggered[0]['prop_id'].split('.')[0]
             
             if button_id == 'play-btn' and selected_file:
+                logging.info(f"Play button clicked with file: {selected_file}")
                 if telemetry.playback_mode and telemetry.playback_paused:
                     telemetry.resume_playback()
+                    logging.info("Resumed playback")
                 else:
+                    logging.info(f"Starting playback of: {selected_file}")
                     success = telemetry.start_playback(selected_file)
                     if not success:
+                        logging.error(f"Failed to start playback of: {selected_file}")
                         return "Error loading log file", False, True, True
+                    else:
+                        logging.info("Playback started successfully")
+                        # Update mode selector to playback when playback starts
+                        # Note: This would require updating the mode selector callback
             elif button_id == 'pause-btn':
                 telemetry.pause_playback()
             elif button_id == 'stop-playback-btn':
@@ -701,12 +899,61 @@ def update_status_indicators(data):
     Output('temp-overview', 'figure'),
     Output('toggle-temp-chart-btn', 'children'),
     Input('telemetry-store', 'data'),
-    Input('toggle-temp-chart-btn', 'n_clicks')
+    Input('toggle-temp-chart-btn', 'n_clicks'),
+    Input('start-btn', 'n_clicks'),
+    Input('stop-btn', 'n_clicks')
 )
-def update_temp_overview(data, n_clicks):
+def update_temp_overview(data, n_clicks, start_clicks, stop_clicks):
     if n_clicks is None:
         n_clicks = 0
 
+    # Check if telemetry is running - if not, show empty/zero values
+    if not telemetry.running:
+        button_text = "Switch to Time Series" if n_clicks % 2 == 0 else "Switch to Current Values"
+        
+        if n_clicks % 2 == 1:
+            # Time series mode when stopped
+            fig = go.Figure()
+            fig.update_layout(
+                title=dict(text="Temperatures Over Time (No Data)", font=dict(color='#e8e8e8', size=TITLE_FONT_SIZE, family=CHART_FONT)),
+                yaxis_title="Temperature (°C)",
+                xaxis_title="Time",
+                yaxis=dict(color='#e8e8e8', gridcolor='#34495e'),
+                xaxis=dict(color='#e8e8e8', gridcolor='#34495e', fixedrange=True),
+                height=260,
+                margin=dict(l=20, r=20, t=80, b=20),
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                font=dict(color='#e8e8e8', family=CHART_FONT)
+            )
+            return fig, button_text
+        else:
+            # Current values mode when stopped - show zeros
+            fig = go.Figure(go.Bar(
+                x=['Min Cell', 'Max Cell', 'Inverter'],
+                y=[0, 0, 0],
+                marker_color=['#3498db', '#e74c3c', '#ffd700'],
+                text=['0.0°C', '0.0°C', '0.0°C'],
+                textposition='auto',
+                textfont=dict(color='#1e2329', size=CHART_FONT_SIZE, family=CHART_FONT),
+            ))
+            
+            fig.update_layout(
+                autosize=False,
+                title=dict(text="Current Temperatures (No Data)", font=dict(color='#e8e8e8', size=TITLE_FONT_SIZE, family=CHART_FONT)),
+                yaxis_title="Temperature (°C)",
+                yaxis=dict(color='#e8e8e8', gridcolor='#34495e', range=[0,80], fixedrange=True),
+                xaxis=dict(color='#e8e8e8', fixedrange=True),
+                height=260,
+                margin=dict(l=20, r=20, t=80, b=20),
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                font=dict(color='#e8e8e8', family=CHART_FONT),
+                transition={'duration': 300, 'easing': 'cubic-in-out'}
+            )
+            return fig, button_text
+
+    # Normal operation when telemetry is running
     if n_clicks % 2 == 1:
         button_text = "Switch to Current Values"
         if not data['timestamp']:
@@ -883,7 +1130,7 @@ def update_temperature_timeseries(data):
 
 if __name__ == '__main__':
     try:
-        app.run(debug=True, host='0.0.0.0', port=8050)
+        app.run(debug=True, host='0.0.0.0', port=8051)
     except KeyboardInterrupt:
         telemetry.stop()
         print("\nTelemetry dashboard stopped.")
