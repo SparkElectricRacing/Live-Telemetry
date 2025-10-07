@@ -1,18 +1,39 @@
 # Backend
 
-## file_parser.py
+## Setup:
+
+Verify you have already installed python packages through
+`pip install -r requirements.txt`
+
+Run each of the following programs in different terminals:
+- `python3 file_parser.py`
+- `python3 server.py`
+
+
+## Key points:
+
+- All backend logic shares a queue imported from global_vars.py
+- file_parser.py handles reading serial and preprocesses data to put into queue
+- server.py handles communication with frontend through the api-endpoint taking data out of the queue
+
+## File Walkthrough:
+
+### file_parser.py
 
 This reads 16 byte lines from the arduino using pyserial, and then parses them according to the specifications laid out below.
 
+```
 [0] hardcoded sanity assert value (0xbb)
 [1] CAN device id
 [2] Subidentifier (for devices that send more than one type of data per address, i.e. from BMS AUX (0x7D): 0x00 = low cell V, 0x01 = high cell V, etc.)
 [3-6] timestamp, in ms from device enable
 [7-14*] data, big-endian
 [15*] hardcoded sanity assert value (0x9a)
+```
 
 Then with our CAN device id and Subidentifier we need to find our signal name. The pairings are below.
 
+```
 SIGNALS = {
         (0x7C, 0): "avg_temp",
         (0x7C, 1): "avg_cell_voltage",
@@ -25,6 +46,7 @@ SIGNALS = {
         (0x7D, 3): "DTC1",
         (0xA5, 0): "raw_rpm",
     }
+```
 
 This corresponds with the table below. We also need to take our data bytes and perform the conversions outlined below to get our real data.
 
@@ -45,7 +67,7 @@ This corresponds with the table below. We also need to take our data bytes and p
 
 Then we send the data through to a thread-safe buffer in global_vars.py.
 
-## server.py
+### server.py
 
 Here we take our data and put it in a JSON organised in the below format.
 
