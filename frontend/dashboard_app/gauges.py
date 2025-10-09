@@ -24,7 +24,7 @@ def create_speed_gauge(data: Dict[str, Any]) -> go.Figure:
         mode="gauge+number+delta",
         value=current_speed,
         domain={'x': [0, 1], 'y': [0, 1]},
-        title={'text': "Vehicle Speed (km/h)"},
+        title={'text': "Vehicle Speed (mph)"},
         delta={'reference': previous_speed},
         gauge={
             'axis': {'range': SPEED_GAUGE_CONFIG['range']},

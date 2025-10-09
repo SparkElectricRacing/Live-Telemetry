@@ -120,20 +120,14 @@ def register_all_callbacks(app, telemetry_receiver):
     )
     def handle_mode_selection(selected_mode):
         if selected_mode == "mock":
-            telemetry_receiver.stop_playback()  # Stop any playback
             telemetry_receiver.mock_mode = True
             telemetry_receiver.api_available = False
             logging.info("Switched to Mock Data mode")
         elif selected_mode == "live":
-            telemetry_receiver.stop_playback()  # Stop any playback
             telemetry_receiver.mock_mode = False
             telemetry_receiver.test_api_connection()  # Test API availability
             logging.info("Switched to Live API mode")
-        elif selected_mode == "playback":
-            telemetry_receiver.stop_playback()  # Reset playback state
-            telemetry_receiver.mock_mode = False  # Disable mock mode during playback
-            logging.info("Switched to Playback mode")
-        
+
         return selected_mode
 
     @app.callback(
@@ -213,6 +207,7 @@ def register_all_callbacks(app, telemetry_receiver):
     @app.callback(
         Output('log-files-list', 'children'),
         Output('selected-log-file', 'options'),
+        Output('selected-file-for-action', 'options'),
         Input('page-load-trigger', 'data'),
         Input('start-btn', 'n_clicks'),
         Input('stop-btn', 'n_clicks')
@@ -238,7 +233,8 @@ def register_all_callbacks(app, telemetry_receiver):
             
             # Create display elements
             file_elements = []
-            dropdown_options = []
+            playback_dropdown_options = []
+            file_action_dropdown_options = []
             
             for log_file in log_files:
                 file_elements.append(
@@ -246,34 +242,42 @@ def register_all_callbacks(app, telemetry_receiver):
                         html.Span(log_file['filename'], className="log-filename"),
                         html.Span(f"{log_file['size_kb']:.1f} KB", className="log-size"),
                         html.Span(log_file['modified'].strftime("%Y-%m-%d %H:%M"), className="log-time")
-                    ], className="log-file-item")
+                    ], className="log-file-item clickable-log-file", id={'type': 'log-file-item', 'index': log_file['filepath']})
                 )
                 
-                dropdown_options.append({
+                # Options for playback dropdown (needs full filepath)
+                playback_dropdown_options.append({
                     'label': f"{log_file['filename']} - {log_file['size_kb']:.1f}KB - {log_file['modified'].strftime('%m/%d %H:%M')}",
                     'value': log_file['filepath']
                 })
+                
+                # Options for file action dropdown (just filename)
+                file_action_dropdown_options.append({
+                    'label': f"{log_file['filename']} ({log_file['size_kb']:.1f}KB)",
+                    'value': log_file['filename']
+                })
             
-            return file_elements, dropdown_options
+            return file_elements, playback_dropdown_options, file_action_dropdown_options
             
         except Exception as e:
-            return [html.Div(f"Error loading log files: {e}")], []
+            return [html.Div(f"Error loading log files: {e}")], [], []
 
     # log file operations 
     @app.callback(
         Output('log-files-list', 'children', allow_duplicate=True),
         Output('selected-log-file', 'options', allow_duplicate=True),
-        Output('file-operation-input', 'value'),
+        Output('selected-file-for-action', 'options', allow_duplicate=True),
+        Output('selected-file-for-action', 'value'),
         Output('new-name-input', 'value'),
         Output('file-operation-status', 'children'),
         Input('delete-file-btn', 'n_clicks'),
         Input('rename-file-btn', 'n_clicks'),
         Input('delete-all-btn', 'n_clicks'),
-        State('file-operation-input', 'value'),
+        State('selected-file-for-action', 'value'),
         State('new-name-input', 'value'),
         prevent_initial_call=True
     )
-    def handle_file_operations(delete_clicks, rename_clicks, delete_all_clicks, filename, new_name):
+    def handle_file_operations(delete_clicks, rename_clicks, delete_all_clicks, selected_filename, new_name):
         ctx = callback_context
         if not ctx.triggered:
             raise exceptions.PreventUpdate
@@ -282,17 +286,19 @@ def register_all_callbacks(app, telemetry_receiver):
         status_message = ""
         
         try:
-            if button_id == 'delete-file-btn' and filename:
-                file_path = os.path.join(LOG_DIRECTORY, filename)
+            if button_id == 'delete-file-btn' and selected_filename:
+                file_path = os.path.join(LOG_DIRECTORY, selected_filename)
                 if os.path.exists(file_path):
                     os.remove(file_path)
-                    status_message = f"✅ Deleted: {filename}"
-                    logging.info(f"Deleted log file: {filename}")
+                    status_message = f"✅ Deleted: {selected_filename}"
+                    logging.info(f"Deleted log file: {selected_filename}")
                 else:
-                    status_message = f" File not found: {filename}"
+                    status_message = f"❌ File not found: {selected_filename}"
+            elif button_id == 'delete-file-btn':
+                status_message = "❌ Please select a file to delete"
                     
-            elif button_id == 'rename-file-btn' and filename and new_name:
-                old_path = os.path.join(LOG_DIRECTORY, filename)
+            elif button_id == 'rename-file-btn' and selected_filename and new_name:
+                old_path = os.path.join(LOG_DIRECTORY, selected_filename)
                 # Ensure new name has .log extension
                 if not new_name.endswith('.log'):
                     new_name += '.log'
@@ -301,12 +307,16 @@ def register_all_callbacks(app, telemetry_receiver):
                 if os.path.exists(old_path):
                     if not os.path.exists(new_path):
                         os.rename(old_path, new_path)
-                        status_message = f" Renamed: {filename} → {new_name}"
-                        logging.info(f"Renamed log file: {filename} → {new_name}")
+                        status_message = f"✅ Renamed: {selected_filename} → {new_name}"
+                        logging.info(f"Renamed log file: {selected_filename} → {new_name}")
                     else:
-                        status_message = f" File already exists: {new_name}"
+                        status_message = f"❌ File already exists: {new_name}"
                 else:
-                    status_message = f" File not found: {filename}"
+                    status_message = f"❌ File not found: {selected_filename}"
+            elif button_id == 'rename-file-btn' and not selected_filename:
+                status_message = "❌ Please select a file to rename"
+            elif button_id == 'rename-file-btn' and not new_name:
+                status_message = "❌ Please enter a new filename"
                     
             elif button_id == 'delete-all-btn':
                 deleted_count = 0
@@ -323,12 +333,12 @@ def register_all_callbacks(app, telemetry_receiver):
                     status_message = " No log files found to delete"
                     
             else:
-                status_message = " Invalid operation or missing parameters"
+                status_message = "❌ Invalid operation or missing parameters"
                 
         except Exception as e:
             logging.error(f"Error during file operation: {e}")
-            status_message = f" Error: {str(e)}"
+            status_message = f"❌ Error: {str(e)}"
         
         # Refresh the list and clear inputs
-        files, options = update_log_files_list(0, 0, 0)
-        return files, options, "", "", status_message
+        files, playback_options, action_options = update_log_files_list(0, 0, 0)
+        return files, playback_options, action_options, None, "", status_message

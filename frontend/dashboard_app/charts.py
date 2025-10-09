@@ -26,7 +26,7 @@ def create_speed_timeseries(data: Dict[str, Any]) -> go.Figure:
                 text="Vehicle Speed Over Time (No Data)",
                 font=dict(color='#e8e8e8', size=TITLE_FONT_SIZE, family=CHART_FONT)
             ),
-            yaxis_title="Speed (km/h)",
+            yaxis_title="Speed (mph)",
             xaxis_title="Time",
             yaxis=dict(color='#e8e8e8', gridcolor='#34495e'),
             xaxis=dict(color='#e8e8e8', gridcolor='#34495e', fixedrange=True),

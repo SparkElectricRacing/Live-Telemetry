@@ -78,7 +78,7 @@ SOC_GAUGE_CONFIG = {
 BASE_DIR = pathlib.Path(__file__).parent
 TEMPLATES_DIR = BASE_DIR / "templates"
 ASSETS_DIR = BASE_DIR / "assets"
-LOG_DIRECTORY = BASE_DIR.parent / "telemetry_logs"
+LOG_DIRECTORY = BASE_DIR.parent.parent / "telemetry_logs"
 
 # Ensure log directory exists
 LOG_DIRECTORY.mkdir(exist_ok=True)

@@ -10,6 +10,7 @@ from telemetry import TelemetryReceiver
 from layout import create_dashboard_layout
 from charts import register_chart_callbacks
 from callbacks import register_all_callbacks
+from summary_callbacks import register_summary_callbacks
 from config import TEMPLATES_DIR
 
 
@@ -34,7 +35,8 @@ def create_app():
     # Register all callbacks
     register_chart_callbacks(app, telemetry)
     register_all_callbacks(app, telemetry)
-    
+    register_summary_callbacks(app)
+
     return app, telemetry
 
 

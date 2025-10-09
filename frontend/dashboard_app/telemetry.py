@@ -28,6 +28,8 @@ class TelemetryReceiver:
         self.mock_mode = True
         self.api_available = False
         self.current_log_handler = None
+        self.current_log_file = None
+        self.log_filename = None
         
         # Playback functionality
         self.playback_mode = False
@@ -79,29 +81,42 @@ class TelemetryReceiver:
                 self.current_log_handler = None
     
     def start_new_log_file(self):
-        """Start logging to a new file with timestamp"""
+        """Start logging telemetry data to a new file with timestamp"""
         try:
-            # Remove existing file handler if any
+            # Close existing log file if any
+            if self.current_log_file:
+                self.current_log_file.close()
+
+            # Remove any existing file handler from logging
             if self.current_log_handler:
                 logging.getLogger().removeHandler(self.current_log_handler)
                 self.current_log_handler.close()
-            
+                self.current_log_handler = None
+
             # Create new log file with timestamp
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             log_filename = LOG_DIRECTORY / f'telemetry_{timestamp}.log'
-            
-            # Create file handler with proper formatting
-            self.current_log_handler = logging.FileHandler(log_filename)
-            formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-            self.current_log_handler.setFormatter(formatter)
-            
-            # Add handler to logger
-            logging.getLogger().addHandler(self.current_log_handler)
-            
-            logging.info(f"📝 Started logging to: {log_filename}")
-            
+
+            # Open file for writing telemetry data only (JSON, no logging)
+            self.current_log_file = open(log_filename, 'w')
+            self.log_filename = log_filename
+
+            logging.info(f"📝 Started telemetry data logging to: {log_filename}")
+
         except Exception as e:
-            logging.error(f"❌ Failed to create log file: {e}")
+            logging.error(f"❌ Failed to create telemetry log file: {e}")
+            self.current_log_file = None
+    
+    def write_telemetry_data(self, data: Dict[str, Any]):
+        """Write telemetry data to log file"""
+        if self.current_log_file:
+            try:
+                # Write only the telemetry data as JSON, one per line
+                json_line = json.dumps(data)
+                self.current_log_file.write(json_line + '\n')
+                self.current_log_file.flush()  # Ensure data is written immediately
+            except Exception as e:
+                logging.error(f"❌ Failed to write telemetry data: {e}")
     
     def data_receiver_thread(self):
         """Background thread for receiving data"""
@@ -146,10 +161,9 @@ class TelemetryReceiver:
                     self.data_queue.put(data)
                     logging.debug(f"📦 Added data to queue. Queue size: {self.data_queue.qsize()}")
                     
-                    # Log telemetry data in proper format for future playback
+                    # Write telemetry data to log file for future playback
                     if not self.playback_mode:  # Don't log playback data
-                        telemetry_json = json.dumps(data)
-                        logging.info(f"Telemetry: {telemetry_json}")
+                        self.write_telemetry_data(data)
                 
             except Exception as e:
                 logging.error(f"❌ Error in data receiver thread: {e}")
@@ -197,22 +211,41 @@ class TelemetryReceiver:
         try:
             self.playback_data = []
             logging.info(f"Attempting to load log file: {log_file_path}")
-            
+
             with open(log_file_path, 'r') as f:
                 line_count = 0
                 for line in f:
                     line_count += 1
-                    # Extract JSON data from log lines
-                    if 'Telemetry:' in line:
-                        # Find the JSON part after "Telemetry: "
+                    line = line.strip()
+
+                    # Skip empty lines
+                    if not line:
+                        continue
+
+                    # Try parsing as pure JSON (new format)
+                    if line.startswith('{') and line.endswith('}'):
+                        try:
+                            data = json.loads(line)
+                            # Validate that we have the required fields
+                            required_fields = ['timestamp', 'vehicle_speed', 'battery_voltage', 'battery_soc']
+                            if all(field in data for field in required_fields):
+                                self.playback_data.append(data)
+                            else:
+                                logging.warning(f"⚠️ Line {line_count}: Missing required fields in data")
+                        except json.JSONDecodeError as e:
+                            logging.warning(f"⚠️ Line {line_count}: Invalid JSON - {e}")
+                        except Exception as e:
+                            logging.warning(f"⚠️ Line {line_count}: Error parsing data - {e}")
+
+                    # Fall back to old format with "Telemetry:" prefix (for backward compatibility)
+                    elif 'Telemetry:' in line:
                         json_start = line.find('Telemetry: ') + len('Telemetry: ')
                         json_str = line[json_start:].strip()
                         try:
                             # Clean up common JSON issues
-                            json_str = json_str.replace("'", '"')  # Replace single quotes with double quotes
+                            json_str = json_str.replace("'", '"')
                             if json_str.startswith('{') and json_str.endswith('}'):
                                 data = json.loads(json_str)
-                                # Validate that we have the required fields
                                 required_fields = ['timestamp', 'vehicle_speed', 'battery_voltage', 'battery_soc']
                                 if all(field in data for field in required_fields):
                                     self.playback_data.append(data)
@@ -222,10 +255,10 @@ class TelemetryReceiver:
                             logging.warning(f"⚠️ Line {line_count}: Invalid JSON - {e}")
                         except Exception as e:
                             logging.warning(f"⚠️ Line {line_count}: Error parsing data - {e}")
-            
+
             logging.info(f"✅ Successfully loaded {len(self.playback_data)} data points from {log_file_path}")
             return len(self.playback_data) > 0
-            
+
         except Exception as e:
             logging.error(f"❌ Error loading log file {log_file_path}: {e}")
             return False
@@ -275,7 +308,12 @@ class TelemetryReceiver:
             self.playback_data = []
             self.playback_file = None
             
-            # Restore previous mode
+            # Stop data collection when playback ends
+            logging.info("🛑 Playback ended - stopping data collection")
+            self.stop()
+            return
+            
+            # Restore previous mode (this code won't run now)
             if not self.api_available:
                 self.mock_mode = True
                 logging.info("🎲 Returned to mock mode")

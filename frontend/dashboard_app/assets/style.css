@@ -286,6 +286,219 @@ body {
     border: 1px solid #2c3e50;
 }
 
+/* File Management Actions */
+.file-management-actions {
+    margin-top: 20px;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 10px;
+    border: 1px solid #34495e;
+}
+
+.file-actions-title {
+    color: var(--primary-color);
+    margin: 0 0 15px 0;
+    font-size: 1.1em;
+    font-weight: bold;
+    text-align: center;
+}
+
+.file-action-section {
+    margin-bottom: 15px;
+}
+
+.file-action-label {
+    color: var(--text-color);
+    font-weight: bold;
+    font-size: 0.9em;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.file-action-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.file-input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #34495e;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-color);
+    font-size: 0.9em;
+}
+
+.file-input::placeholder {
+    color: #95a5a6;
+}
+
+.file-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 5px rgba(255, 215, 0, 0.3);
+}
+
+.file-selection-dropdown {
+    width: 100%;
+}
+
+.file-action-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.85em;
+    min-width: 80px;
+}
+
+.delete-btn {
+    background-color: #e74c3c;
+    color: white;
+}
+
+.delete-btn:hover:not(:disabled) {
+    background-color: #c0392b;
+    transform: translateY(-1px);
+}
+
+.rename-btn {
+    background-color: #3498db;
+    color: white;
+}
+
+.rename-btn:hover:not(:disabled) {
+    background-color: #2980b9;
+    transform: translateY(-1px);
+}
+
+.delete-all-btn {
+    background-color: #8B0000;
+    color: white;
+    width: 100%;
+    padding: 10px;
+    font-size: 0.9em;
+}
+
+.delete-all-btn:hover:not(:disabled) {
+    background-color: #660000;
+    transform: translateY(-1px);
+}
+
+/* Playback Management Actions */
+.playback-management-actions {
+    margin-top: 20px;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 10px;
+    border: 1px solid #34495e;
+}
+
+.playback-actions-title {
+    color: var(--primary-color);
+    margin: 0 0 15px 0;
+    font-size: 1.1em;
+    font-weight: bold;
+    text-align: center;
+}
+
+.playback-instruction-section {
+    margin-bottom: 15px;
+}
+
+.playback-instruction {
+    color: #95a5a6;
+    font-style: italic;
+    margin: 0;
+    font-size: 0.9em;
+    text-align: center;
+    padding: 8px;
+    background: rgba(149, 165, 166, 0.1);
+    border-radius: 6px;
+}
+
+.playback-action-section {
+    margin-bottom: 15px;
+}
+
+.playback-action-label {
+    color: var(--text-color);
+    font-weight: bold;
+    font-size: 0.9em;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.playback-dropdown {
+    width: 100%;
+}
+
+.playback-button-row {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.playback-action-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.9em;
+    min-width: 80px;
+}
+
+.play-btn {
+    background-color: #28a745;
+    color: white;
+}
+
+.play-btn:hover:not(:disabled) {
+    background-color: #218838;
+    transform: translateY(-1px);
+}
+
+.pause-btn {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.pause-btn:hover:not(:disabled) {
+    background-color: #e0a800;
+    transform: translateY(-1px);
+}
+
+.stop-btn {
+    background-color: #dc3545;
+    color: white;
+}
+
+.stop-btn:hover:not(:disabled) {
+    background-color: #c82333;
+    transform: translateY(-1px);
+}
+
+.playback-status-section {
+    margin-top: 10px;
+}
+
+.playback-status-display {
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    border: 1px solid #34495e;
+    color: var(--text-color);
+    text-align: center;
+    font-weight: bold;
+    min-height: 20px;
+}
+
 .section-title {
     color: var(--primary-color);
     margin-bottom: 20px;
@@ -425,4 +638,141 @@ body {
 ._dash-dropdown .Select-menu {
     background-color: var(--container-bg) !important;
     border: 1px solid #34495e !important;
+}
+/* Clickable Log Files */
+.clickable-log-file {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.clickable-log-file:hover {
+    background: rgba(255, 215, 0, 0.1) !important;
+    border-color: var(--primary-color);
+    transform: translateX(5px);
+}
+
+.clickable-log-file:active {
+    transform: translateX(3px) scale(0.98);
+}
+
+/* Log Summary Section */
+.log-summary-section {
+    background: var(--container-bg);
+    border-radius: var(--border-radius);
+    padding: 20px;
+    margin-top: 20px;
+    border: 1px solid #2c3e50;
+}
+
+.summary-instruction-section {
+    margin-bottom: 20px;
+}
+
+.summary-instruction {
+    color: #95a5a6;
+    font-style: italic;
+    text-align: center;
+    font-size: 0.95em;
+}
+
+.summary-title {
+    color: var(--primary-color);
+    font-size: 1.3em;
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+/* Summary Statistics Cards */
+.summary-stats-container {
+    margin-bottom: 20px;
+}
+
+.stat-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.stat-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid #34495e;
+    border-radius: 10px;
+    padding: 15px;
+    transition: all 0.2s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.1);
+    border-color: var(--primary-color);
+}
+
+.stat-card-duration {
+    grid-column: span 2;
+    text-align: center;
+}
+
+.stat-card-title {
+    color: #95a5a6;
+    font-size: 0.85em;
+    font-weight: bold;
+    margin: 0 0 10px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.stat-card-value-large {
+    color: var(--primary-color);
+    font-size: 2.5em;
+    font-weight: bold;
+    margin: 10px 0;
+}
+
+.stat-card-subtitle {
+    color: #95a5a6;
+    font-size: 0.9em;
+    margin-top: 5px;
+}
+
+.stat-card-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.stat-label {
+    color: #95a5a6;
+    font-size: 0.9em;
+}
+
+.stat-value {
+    font-weight: bold;
+    font-size: 1.1em;
+    color: var(--text-color);
+}
+
+/* Summary Plot Container */
+#summary-plot-container {
+    min-height: 900px;
+    height: auto;
+    max-height: none;
+}
+
+.no-data-message,
+.error-message {
+    padding: 40px;
+    text-align: center;
+    color: #95a5a6;
+    font-size: 1.1em;
+}
+
+.error-message {
+    color: #e74c3c;
 }
