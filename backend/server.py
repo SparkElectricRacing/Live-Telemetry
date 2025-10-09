@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from backend import global_vars as gv
+import global_vars as gv
 from queue import Empty
 
 app = FastAPI()
@@ -48,7 +48,7 @@ async def read_root():
             break
         
     for row in rows:
-        if row[0] == 0xBB & row[4] == 0x9A: # Will not receive data that does not have correct sanity bytes
+        if row[0] == 0xBB and row[4] == 0x9A: # Will not receive data that does not have correct sanity bytes
             if row[1] in signals:
                 type_info = SIGNAL_TYPES[row[1]]
                 signals[row[1]]["Time"].append(type_info["Time"](row[2]))
@@ -58,3 +58,4 @@ async def read_root():
                 #     "Data": type_info["Data"](row[3])
                 # })
     return signals
+

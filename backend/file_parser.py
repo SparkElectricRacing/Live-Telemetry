@@ -124,10 +124,13 @@ def read_bin_file(file):
             if signal_name == "raw_rpm":
                 rpmSpeed = rpm_speed(data)
                 print(hcSanValA, "rpm_speed", timestamp, rpmSpeed, hcSanValB)
+                gv.buffer.put([hcSanValA, "rpm_speed", timestamp, rpmSpeed, hcSanValB])
                 speedMPH = mph_speed(rpmSpeed)
                 print(hcSanValA, "speedMPH", timestamp, speedMPH, hcSanValB)
+                gv.buffer.put([hcSanValA, "speedMPH", timestamp, speedMPH, hcSanValB])
             else:
                 print(hcSanValA, signal_name, timestamp, data, hcSanValB)
+                gv.buffer.put([hcSanValA, signal_name, timestamp, data, hcSanValB])
     return
 
 def read_from_arduino(port_name, baud_rate):
@@ -201,4 +204,4 @@ def read_from_arduino_v4(port_name, baud_rate):
 
 # def __main__():
 
-read_bin_file("output.bin")
+# read_bin_file("output.bin")
