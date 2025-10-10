@@ -36,4 +36,4 @@ Modular Live Telemetry Project for Zephryus:
 
 6. Run `sudo chmod 666 <PORT NAME>` to give the port permissions, port name is defined above
 
-7. Inside `FILE TBD` replace the port name with the one from `dmesg/lsusb`
+7. Inside `backend/server.py` replace the port name with the one from `dmesg/lsusb`
