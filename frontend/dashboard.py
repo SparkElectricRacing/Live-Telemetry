@@ -899,11 +899,9 @@ def update_status_indicators(data):
     Output('temp-overview', 'figure'),
     Output('toggle-temp-chart-btn', 'children'),
     Input('telemetry-store', 'data'),
-    Input('toggle-temp-chart-btn', 'n_clicks'),
-    Input('start-btn', 'n_clicks'),
-    Input('stop-btn', 'n_clicks')
+    Input('toggle-temp-chart-btn', 'n_clicks')
 )
-def update_temp_overview(data, n_clicks, start_clicks, stop_clicks):
+def update_temp_overview(data, n_clicks):
     if n_clicks is None:
         n_clicks = 0
 
@@ -948,8 +946,7 @@ def update_temp_overview(data, n_clicks, start_clicks, stop_clicks):
                 margin=dict(l=20, r=20, t=80, b=20),
                 plot_bgcolor='rgba(0,0,0,0)',
                 paper_bgcolor='rgba(0,0,0,0)',
-                font=dict(color='#e8e8e8', family=CHART_FONT),
-                transition={'duration': 300, 'easing': 'cubic-in-out'}
+                font=dict(color='#e8e8e8', family=CHART_FONT)
             )
             return fig, button_text
 
@@ -1008,8 +1005,7 @@ def update_temp_overview(data, n_clicks, start_clicks, stop_clicks):
             margin=dict(l=20, r=20, t=80, b=20), # Adjusted margin
             plot_bgcolor='rgba(0,0,0,0)', # Set plot background to transparent
             paper_bgcolor='rgba(0,0,0,0)', # Set paper background to transparent
-            font=dict(color='#e8e8e8', family=CHART_FONT),
-            transition={'duration': 300, 'easing': 'cubic-in-out'}
+            font=dict(color='#e8e8e8', family=CHART_FONT)
         )
         return fig, button_text
 
