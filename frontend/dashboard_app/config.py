@@ -47,7 +47,7 @@ SPEED_GAUGE_CONFIG = {
     'steps': [
         {'range': [0, 50], 'color': "lightgray"},
         {'range': [50, 100], 'color': "gray"},
-        {'range': [100, 150], 'color': "red"}
+        {'range': [100, 200], 'color': "green"}
     ],
     'threshold': {'line': {'color': "red", 'width': 4}, 'thickness': 0.75, 'value': 120}
 }

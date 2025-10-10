@@ -200,6 +200,13 @@ class TelemetryReceiver:
                     if signal_data.get('Data'):  # Check if there's any data
                         # Get the most recent data point (last in the list)
                         data[signal_name] = signal_data['Data'][-1]
+
+                # Return data if we have at least one signal value, otherwise None
+                if len(data) > 1:  # More than just timestamp
+                    return data
+                else:
+                    logging.warning("⚠️ API returned no signal data")
+                    return None
             else:
                 logging.warning(f"⚠️ API error: {response.status_code}")
                 return None

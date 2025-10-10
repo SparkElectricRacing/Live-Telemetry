@@ -127,11 +127,10 @@ def register_all_callbacks(app, telemetry_receiver):
         
         return data
 
-    # updates internal flags on data collection mode 
+    # updates internal flags on data collection mode
     @app.callback(
         Output('data-mode-selector', 'value'),
-        Input('data-mode-selector', 'value'),
-        prevent_initial_call=True
+        Input('data-mode-selector', 'value')
     )
     def handle_mode_selection(selected_mode):
         if selected_mode == "mock":
