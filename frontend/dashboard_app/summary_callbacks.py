@@ -79,33 +79,40 @@ def register_summary_callbacks(app):
 
             # Calculate statistics
             stats = {
-                'vehicle_speed': {
-                    'label': 'Vehicle Speed (km/h)',
-                    'avg': df['vehicle_speed'].mean(),
-                    'max': df['vehicle_speed'].max(),
-                    'min': df['vehicle_speed'].min(),
+                'speedMPH': {
+                    'label': 'Vehicle Speed (mph)',
+                    'avg': df['speedMPH'].mean(),
+                    'max': df['speedMPH'].max(),
+                    'min': df['speedMPH'].min(),
                     'color': CHART_COLORS['primary']
                 },
-                'battery_voltage': {
-                    'label': 'Battery Voltage (V)',
-                    'avg': df['battery_voltage'].mean(),
-                    'max': df['battery_voltage'].max(),
-                    'min': df['battery_voltage'].min(),
+                'pack_voltage': {
+                    'label': 'Pack Voltage (V)',
+                    'avg': df['pack_voltage'].mean(),
+                    'max': df['pack_voltage'].max(),
+                    'min': df['pack_voltage'].min(),
                     'color': CHART_COLORS['voltage_gauge']
                 },
-                'battery_soc': {
-                    'label': 'Battery SOC (%)',
-                    'avg': df['battery_soc'].mean(),
-                    'max': df['battery_soc'].max(),
-                    'min': df['battery_soc'].min(),
+                'pack_SOC': {
+                    'label': 'Pack SOC (%)',
+                    'avg': df['pack_SOC'].mean(),
+                    'max': df['pack_SOC'].max(),
+                    'min': df['pack_SOC'].min(),
                     'color': CHART_COLORS['soc_gauge']
                 },
-                'inverter_temp': {
-                    'label': 'Inverter Temp (°C)',
-                    'avg': df['inverter_temp'].mean(),
-                    'max': df['inverter_temp'].max(),
-                    'min': df['inverter_temp'].min(),
+                'avg_temp': {
+                    'label': 'Avg Temp (°C)',
+                    'avg': df['avg_temp'].mean(),
+                    'max': df['avg_temp'].max(),
+                    'min': df['avg_temp'].min(),
                     'color': CHART_COLORS['inverter_temp']
+                },
+                'max_cell_temp': {
+                    'label': 'Max Cell Temp (°C)',
+                    'avg': df['max_cell_temp'].mean(),
+                    'max': df['max_cell_temp'].max(),
+                    'min': df['max_cell_temp'].min(),
+                    'color': CHART_COLORS['max_cell_temp']
                 }
             }
 
@@ -202,19 +209,19 @@ def register_summary_callbacks(app):
             fig.add_trace(
                 go.Scatter(
                     x=df['timestamp'],
-                    y=df['vehicle_speed'],
+                    y=df['speedMPH'],
                     mode='lines',
-                    name='Speed (km/h)',
+                    name='Speed (mph)',
                     line=dict(color=CHART_COLORS['primary'], width=2)
                 ),
                 row=1, col=1
             )
 
-            # Row 2: Battery SOC (left y-axis) and Voltage (right y-axis)
+            # Row 2: Pack SOC (left y-axis) and Voltage (right y-axis)
             fig.add_trace(
                 go.Scatter(
                     x=df['timestamp'],
-                    y=df['battery_soc'],
+                    y=df['pack_SOC'],
                     mode='lines',
                     name='SOC (%)',
                     line=dict(color=CHART_COLORS['soc_gauge'], width=2)
@@ -225,7 +232,7 @@ def register_summary_callbacks(app):
             fig.add_trace(
                 go.Scatter(
                     x=df['timestamp'],
-                    y=df['battery_voltage'],
+                    y=df['pack_voltage'],
                     mode='lines',
                     name='Voltage (V)',
                     line=dict(color=CHART_COLORS['voltage_gauge'], width=2)
@@ -237,10 +244,10 @@ def register_summary_callbacks(app):
             fig.add_trace(
                 go.Scatter(
                     x=df['timestamp'],
-                    y=df['min_cell_temp'],
+                    y=df['avg_temp'],
                     mode='lines',
-                    name='Min Cell Temp',
-                    line=dict(color=CHART_COLORS['min_cell_temp'], width=2)
+                    name='Avg Temp',
+                    line=dict(color=CHART_COLORS['inverter_temp'], width=2)
                 ),
                 row=3, col=1
             )
@@ -256,20 +263,9 @@ def register_summary_callbacks(app):
                 row=3, col=1
             )
 
-            fig.add_trace(
-                go.Scatter(
-                    x=df['timestamp'],
-                    y=df['inverter_temp'],
-                    mode='lines',
-                    name='Inverter Temp',
-                    line=dict(color=CHART_COLORS['inverter_temp'], width=2)
-                ),
-                row=3, col=1
-            )
-
             # Update axes
             fig.update_xaxes(title_text="Time", row=3, col=1, color='#e8e8e8', gridcolor='#34495e')
-            fig.update_yaxes(title_text="Speed (km/h)", row=1, col=1, color='#e8e8e8', gridcolor='#34495e')
+            fig.update_yaxes(title_text="Speed (mph)", row=1, col=1, color='#e8e8e8', gridcolor='#34495e')
             fig.update_yaxes(title_text="SOC (%)", row=2, col=1, color='#e8e8e8', gridcolor='#34495e', secondary_y=False)
             fig.update_yaxes(title_text="Voltage (V)", row=2, col=1, color='#e8e8e8', secondary_y=True)
             fig.update_yaxes(title_text="Temperature (°C)", row=3, col=1, color='#e8e8e8', gridcolor='#34495e')

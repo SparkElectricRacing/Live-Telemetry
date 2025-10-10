@@ -17,8 +17,8 @@ from config import (
 
 def create_speed_gauge(data: Dict[str, Any]) -> go.Figure:
     """Create speed gauge chart"""
-    current_speed = data['vehicle_speed'][-1] if data['vehicle_speed'] else 0
-    previous_speed = data['vehicle_speed'][-2] if len(data['vehicle_speed']) > 1 else current_speed
+    current_speed = data['speedMPH'][-1] if data['speedMPH'] else 0
+    previous_speed = data['speedMPH'][-2] if len(data['speedMPH']) > 1 else current_speed
     
     fig = go.Figure(go.Indicator(
         mode="gauge+number+delta",
@@ -47,8 +47,8 @@ def create_speed_gauge(data: Dict[str, Any]) -> go.Figure:
 
 def create_voltage_gauge(data: Dict[str, Any]) -> go.Figure:
     """Create voltage gauge chart"""
-    current_voltage = data['battery_voltage'][-1] if data['battery_voltage'] else 0
-    previous_voltage = data['battery_voltage'][-2] if len(data['battery_voltage']) > 1 else current_voltage
+    current_voltage = data['pack_voltage'][-1] if data['pack_voltage'] else 0
+    previous_voltage = data['pack_voltage'][-2] if len(data['pack_voltage']) > 1 else current_voltage
     
     fig = go.Figure(go.Indicator(
         mode="gauge+number+delta",
@@ -77,8 +77,8 @@ def create_voltage_gauge(data: Dict[str, Any]) -> go.Figure:
 
 def create_soc_gauge(data: Dict[str, Any]) -> go.Figure:
     """Create SOC gauge chart"""
-    current_soc = data['battery_soc'][-1] if data['battery_soc'] else 0
-    previous_soc = data['battery_soc'][-2] if len(data['battery_soc']) > 1 else current_soc
+    current_soc = data['pack_SOC'][-1] if data['pack_SOC'] else 0
+    previous_soc = data['pack_SOC'][-2] if len(data['pack_SOC']) > 1 else current_soc
     
     fig = go.Figure(go.Indicator(
         mode="gauge+number+delta",

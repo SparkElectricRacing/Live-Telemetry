@@ -62,15 +62,20 @@ def register_all_callbacks(app, telemetry_receiver):
             logging.info("   📋 Total data points retrieved from queue: 0")
             if existing_data is None:
                 logging.info("   🆕 Using initial data structure")
-                # Return initial empty data structure
+                # Return initial empty data structure with all backend signals
                 return {
                     'timestamp': [],
-                    'vehicle_speed': [],
-                    'battery_voltage': [],
-                    'battery_soc': [],
-                    'min_cell_temp': [],
+                    'speedMPH': [],
+                    'rpm_speed': [],
+                    'pack_voltage': [],
+                    'pack_SOC': [],
+                    'avg_temp': [],
+                    'avg_cell_voltage': [],
+                    'low_cell_voltage': [],
+                    'high_cell_voltage': [],
                     'max_cell_temp': [],
-                    'inverter_temp': []
+                    'is_charging': [],
+                    'DTC1': []
                 }
             else:
                 logging.info(" No new data points available - UI will not update")
@@ -82,25 +87,35 @@ def register_all_callbacks(app, telemetry_receiver):
         if existing_data is None:
             data = {
                 'timestamp': [],
-                'vehicle_speed': [],
-                'battery_voltage': [],
-                'battery_soc': [],
-                'min_cell_temp': [],
+                'speedMPH': [],
+                'rpm_speed': [],
+                'pack_voltage': [],
+                'pack_SOC': [],
+                'avg_temp': [],
+                'avg_cell_voltage': [],
+                'low_cell_voltage': [],
+                'high_cell_voltage': [],
                 'max_cell_temp': [],
-                'inverter_temp': []
+                'is_charging': [],
+                'DTC1': []
             }
         else:
             data = existing_data.copy()
-        
+
         # Add new data points
         for point in new_data_points:
             data['timestamp'].append(point['timestamp'])
-            data['vehicle_speed'].append(point['vehicle_speed'])
-            data['battery_voltage'].append(point['battery_voltage'])
-            data['battery_soc'].append(point['battery_soc'])
-            data['min_cell_temp'].append(point['min_cell_temp'])
-            data['max_cell_temp'].append(point['max_cell_temp'])
-            data['inverter_temp'].append(point['inverter_temp'])
+            data['speedMPH'].append(point.get('speedMPH', 0))
+            data['rpm_speed'].append(point.get('rpm_speed', 0))
+            data['pack_voltage'].append(point.get('pack_voltage', 0))
+            data['pack_SOC'].append(point.get('pack_SOC', 0))
+            data['avg_temp'].append(point.get('avg_temp', 0))
+            data['avg_cell_voltage'].append(point.get('avg_cell_voltage', 0))
+            data['low_cell_voltage'].append(point.get('low_cell_voltage', 0))
+            data['high_cell_voltage'].append(point.get('high_cell_voltage', 0))
+            data['max_cell_temp'].append(point.get('max_cell_temp', 0))
+            data['is_charging'].append(point.get('is_charging', False))
+            data['DTC1'].append(point.get('DTC1', 0))
         
         # Keep only the last MAX_DATA_POINTS to prevent memory issues
         for key in data:

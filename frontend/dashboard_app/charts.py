@@ -43,18 +43,18 @@ def create_speed_timeseries(data: Dict[str, Any]) -> go.Figure:
     fig = go.Figure()
     fig.add_trace(go.Scatter(
         x=timestamps,
-        y=data['vehicle_speed'],
+        y=data['speedMPH'],
         mode='lines',
         name='Vehicle Speed',
         line=dict(color=CHART_COLORS['speed_line'])
     ))
-    
+
     fig.update_layout(
         title=dict(
             text="Vehicle Speed Over Time",
             font=dict(color='#e8e8e8', size=TITLE_FONT_SIZE, family=CHART_FONT)
         ),
-        yaxis_title="Speed (km/h)",
+        yaxis_title="Speed (mph)",
         xaxis_title="Time",
         yaxis=dict(color='#e8e8e8', gridcolor='#34495e'),
         xaxis=dict(color='#e8e8e8', gridcolor='#34495e', fixedrange=True),
@@ -95,9 +95,9 @@ def create_voltage_timeseries(data: Dict[str, Any]) -> go.Figure:
     fig = go.Figure()
     fig.add_trace(go.Scatter(
         x=timestamps,
-        y=data['battery_voltage'],
+        y=data['pack_voltage'],
         mode='lines',
-        name='Battery Voltage',
+        name='Pack Voltage',
         line=dict(color=CHART_COLORS['voltage_gauge'])
     ))
     
@@ -147,9 +147,9 @@ def create_soc_timeseries(data: Dict[str, Any]) -> go.Figure:
     fig = go.Figure()
     fig.add_trace(go.Scatter(
         x=timestamps,
-        y=data['battery_soc'],
+        y=data['pack_SOC'],
         mode='lines',
-        name='Battery SOC',
+        name='Pack SOC',
         line=dict(color=CHART_COLORS['soc_gauge'])
     ))
     
@@ -183,24 +183,17 @@ def create_temperature_timeseries(data: Dict[str, Any]) -> go.Figure:
     fig = go.Figure()
     fig.add_trace(go.Scatter(
         x=timestamps,
-        y=data['min_cell_temp'],
+        y=data['avg_temp'],
         mode='lines',
-        name='Min Cell',
-        line=dict(color=CHART_COLORS['min_cell_temp'])
+        name='Avg Temp',
+        line=dict(color=CHART_COLORS['inverter_temp'])
     ))
     fig.add_trace(go.Scatter(
         x=timestamps,
         y=data['max_cell_temp'],
         mode='lines',
-        name='Max Cell',
+        name='Max Cell Temp',
         line=dict(color=CHART_COLORS['max_cell_temp'])
-    ))
-    fig.add_trace(go.Scatter(
-        x=timestamps,
-        y=data['inverter_temp'],
-        mode='lines',
-        name='Inverter',
-        line=dict(color=CHART_COLORS['inverter_temp'])
     ))
     
     fig.update_layout(
@@ -225,21 +218,19 @@ def create_temperature_timeseries(data: Dict[str, Any]) -> go.Figure:
 def create_temperature_bar_chart(data: Dict[str, Any]) -> go.Figure:
     """Create temperature bar chart"""
     if not data['timestamp']:
-        min_temp, max_temp, inv_temp = 0, 0, 0
+        avg_temp, max_temp = 0, 0
     else:
-        min_temp = data['min_cell_temp'][-1]
+        avg_temp = data['avg_temp'][-1]
         max_temp = data['max_cell_temp'][-1]
-        inv_temp = data['inverter_temp'][-1]
-    
+
     fig = go.Figure(go.Bar(
-        x=['Min Cell', 'Max Cell', 'Inverter'],
-        y=[min_temp, max_temp, inv_temp],
+        x=['Avg Temp', 'Max Cell Temp'],
+        y=[avg_temp, max_temp],
         marker_color=[
-            CHART_COLORS['min_cell_temp'],
-            CHART_COLORS['max_cell_temp'],
-            CHART_COLORS['inverter_temp']
+            CHART_COLORS['inverter_temp'],
+            CHART_COLORS['max_cell_temp']
         ],
-        text=[f'{min_temp:.1f}°C', f'{max_temp:.1f}°C', f'{inv_temp:.1f}°C'],
+        text=[f'{avg_temp:.1f}°C', f'{max_temp:.1f}°C'],
         textposition='auto',
         textfont=dict(color='#1e2329', size=CHART_FONT_SIZE, family=CHART_FONT)
     ))
@@ -401,31 +392,31 @@ def register_chart_callbacks(app, telemetry_receiver):
         Input('telemetry-store', 'data')
     )
     def update_status_indicators(data):
-        if not data or not data['timestamp'] or not data['battery_voltage']:
+        if not data or not data['timestamp'] or not data['pack_voltage']:
             return dash.no_update
-        
+
         # Voltage status
-        voltage = data['battery_voltage'][-1]
+        voltage = data['pack_voltage'][-1]
         if voltage >= VOLTAGE_THRESHOLDS['good']:
             v_status, v_class = "OK", "status-good"
         elif voltage >= VOLTAGE_THRESHOLDS['caution']:
             v_status, v_class = "Caution", "status-caution"
         else:
             v_status, v_class = "Warning", "status-warning"
-        
+
         v_text = f"Voltage: {v_status}"
         v_classname = f"status-indicator {v_class}"
-        
+
         # SOC status
-        soc = data['battery_soc'][-1]
+        soc = data['pack_SOC'][-1]
         if soc >= SOC_THRESHOLDS['good']:
             s_status, s_class = "OK", "status-good"
         elif soc >= SOC_THRESHOLDS['caution']:
             s_status, s_class = "Caution", "status-caution"
         else:
             s_status, s_class = "Warning", "status-warning"
-        
+
         s_text = f"SOC: {s_status}"
         s_classname = f"status-indicator {s_class}"
-        
+
         return v_text, v_classname, s_text, s_classname

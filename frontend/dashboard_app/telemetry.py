@@ -101,10 +101,10 @@ class TelemetryReceiver:
             self.current_log_file = open(log_filename, 'w')
             self.log_filename = log_filename
 
-            logging.info(f"📝 Started telemetry data logging to: {log_filename}")
+            logging.info(f"Started telemetry data logging to: {log_filename}")
 
         except Exception as e:
-            logging.error(f"❌ Failed to create telemetry log file: {e}")
+            logging.error(f" Failed to create telemetry log file: {e}")
             self.current_log_file = None
     
     def write_telemetry_data(self, data: Dict[str, Any]):
@@ -116,7 +116,7 @@ class TelemetryReceiver:
                 self.current_log_file.write(json_line + '\n')
                 self.current_log_file.flush()  # Ensure data is written immediately
             except Exception as e:
-                logging.error(f"❌ Failed to write telemetry data: {e}")
+                logging.error(f" Failed to write telemetry data: {e}")
     
     def data_receiver_thread(self):
         """Background thread for receiving data"""
@@ -147,13 +147,13 @@ class TelemetryReceiver:
                 # Only generate other data if NOT in playback mode
                 elif self.mock_mode and not self.playback_mode:
                     data = self.generate_mock_data()
-                    logging.info(f"🎲 Generated mock data: {data['vehicle_speed']:.1f} km/h, {data['battery_voltage']:.1f}V")
+                    logging.info(f"Generated mock data: {data['speedMPH']:.1f} mph, {data['pack_voltage']:.1f}V")
                     time.sleep(API_POLL_RATE)
-                    
+
                 elif not self.playback_mode:  # API mode, but only if not in playback
                     data = self.fetch_api_data()
                     if data:
-                        logging.info(f"📡 Received API data: {data['vehicle_speed']:.1f} km/h")
+                        logging.info(f"Received API data: {data.get('speedMPH', 0):.1f} mph")
                     time.sleep(API_POLL_RATE)
                 
                 # Put data on the queue and log for playback
@@ -166,32 +166,45 @@ class TelemetryReceiver:
                         self.write_telemetry_data(data)
                 
             except Exception as e:
-                logging.error(f"❌ Error in data receiver thread: {e}")
+                logging.error(f"Error in data receiver thread: {e}")
                 time.sleep(1)
     
     def generate_mock_data(self) -> Dict[str, Any]:
-        """Generate realistic mock telemetry data"""
+        """Generate realistic mock telemetry data matching all backend signals"""
         return {
             'timestamp': datetime.now().isoformat(),
-            'vehicle_speed': random.uniform(0, 120),
-            'battery_voltage': random.uniform(350, 400),
-            'battery_soc': random.uniform(20, 95),
-            'min_cell_temp': random.uniform(20, 30),
-            'max_cell_temp': random.uniform(30, 40),
-            'inverter_temp': random.uniform(45, 75)
+            'speedMPH': random.uniform(0, 80),  # Speed in MPH
+            'rpm_speed': random.uniform(-3000, 0),  # RPM speed (negative values)
+            'pack_voltage': random.uniform(350, 400),  # Pack voltage in V
+            'pack_SOC': random.uniform(20, 95),  # State of charge in %
+            'avg_temp': random.uniform(20, 40),  # Average temperature in °C
+            'avg_cell_voltage': random.uniform(3.3, 3.8),  # Average cell voltage in V
+            'low_cell_voltage': random.uniform(3.0, 3.5),  # Low cell voltage in V
+            'high_cell_voltage': random.uniform(3.6, 4.2),  # High cell voltage in V
+            'max_cell_temp': random.uniform(30, 50),  # Max cell temperature in °C
+            'is_charging': random.choice([True, False]),  # Charging status
+            'DTC1': 0  # Diagnostic trouble code (0 = no errors)
         }
     
     def fetch_api_data(self) -> Optional[Dict[str, Any]]:
-        """Fetch data from the API"""
+        """Fetch data from the API and extract latest values from each signal"""
         try:
             response = requests.get(API_URL, timeout=API_TIMEOUT)
             if response.status_code == 200:
-                return response.json()
+                signals = response.json()
+                # Backend returns: {"speedMPH": {"Time": [...], "Data": [...]}, ...}
+                # Extract the latest value from each signal
+                data = {'timestamp': datetime.now().isoformat()}
+
+                for signal_name, signal_data in signals.items():
+                    if signal_data.get('Data'):  # Check if there's any data
+                        # Get the most recent data point (last in the list)
+                        data[signal_name] = signal_data['Data'][-1]
             else:
                 logging.warning(f"⚠️ API error: {response.status_code}")
                 return None
         except requests.exceptions.RequestException as e:
-            logging.error(f"❌ API request failed: {e}")
+            logging.error(f"API request failed: {e}")
             self.api_available = False
             self.mock_mode = True
             return None
@@ -279,29 +292,29 @@ class TelemetryReceiver:
             if not self.running:
                 self.start()
             
-            logging.info(f"✅ PLAYBACK STARTED: {log_file_path} with {len(self.playback_data)} data points")
+            logging.info(f"PLAYBACK STARTED: {log_file_path} with {len(self.playback_data)} data points")
             logging.info(f"Playback mode: {self.playback_mode}, Mock mode: {self.mock_mode}")
             return True
         else:
-            logging.error(f"❌ Failed to load log file: {log_file_path}")
+            logging.error(f"Failed to load log file: {log_file_path}")
             return False
     
     def pause_playback(self):
         """Pause playback"""
         if self.playback_mode:
             self.playback_paused = True
-            logging.info("⏸️ Playback paused")
+            logging.info("Playback paused")
     
     def resume_playback(self):
         """Resume playback"""
         if self.playback_mode:
             self.playback_paused = False
-            logging.info("▶️ Playback resumed")
+            logging.info("Playback resumed")
     
     def stop_playback(self):
         """Stop playback and return to normal mode"""
         if self.playback_mode:
-            logging.info("⏹️ Stopping playback, returning to normal mode")
+            logging.info("Stopping playback, returning to normal mode")
             self.playback_mode = False
             self.playback_paused = False
             self.playback_index = 0
@@ -309,14 +322,6 @@ class TelemetryReceiver:
             self.playback_file = None
             
             # Stop data collection when playback ends
-            logging.info("🛑 Playback ended - stopping data collection")
+            logging.info("Playback ended - stopping data collection")
             self.stop()
             return
-            
-            # Restore previous mode (this code won't run now)
-            if not self.api_available:
-                self.mock_mode = True
-                logging.info("🎲 Returned to mock mode")
-            else:
-                self.mock_mode = False
-                logging.info("📡 Returned to API mode")
