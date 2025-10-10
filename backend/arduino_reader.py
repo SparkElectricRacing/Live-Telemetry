@@ -140,4 +140,4 @@ port_name = "/dev/ttyUSB0"
 baud_rate = 115200
 if __name__ == "__main__":
     while True:
-        read_from_arduino()
+        read_from_arduino(port_name, baud_rate)
