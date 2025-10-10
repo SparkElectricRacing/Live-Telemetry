@@ -6,7 +6,7 @@ import os
 import pathlib
 
 # API Configuration
-API_URL = "http://localhost:3000/api/telemetry"
+API_URL = "http://localhost:3000/data/receive"
 API_POLL_RATE = 0.05  # 50ms between polls
 API_TIMEOUT = 2  # 2 second timeout
 

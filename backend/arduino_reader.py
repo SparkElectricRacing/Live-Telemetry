@@ -112,74 +112,7 @@ def parse_in(inp):
         print(type(inp))
         return 0, "", 0, 0, 0
 
-def read_bin_file(file):
-    # look at changing logic to include := walrus operator while loop with conditional to verify 16 bytes
-    with open(file, 'rb') as f:
-        while True:
-            line = f.read(16)
-            if not line:
-                print("EOF")
-                break
-            hcSanValA, signal_name, timestamp, data, hcSanValB = parse_in(line)
-            if signal_name == "raw_rpm":
-                rpmSpeed = rpm_speed(data)
-                print(hcSanValA, "rpm_speed", timestamp, rpmSpeed, hcSanValB)
-                gv.buffer.put([hcSanValA, "rpm_speed", timestamp, rpmSpeed, hcSanValB])
-                speedMPH = mph_speed(rpmSpeed)
-                print(hcSanValA, "speedMPH", timestamp, speedMPH, hcSanValB)
-                gv.buffer.put([hcSanValA, "speedMPH", timestamp, speedMPH, hcSanValB])
-            else:
-                print(hcSanValA, signal_name, timestamp, data, hcSanValB)
-                gv.buffer.put([hcSanValA, signal_name, timestamp, data, hcSanValB])
-    return
-
 def read_from_arduino(port_name, baud_rate):
-    with serial.Serial(port_name, baud_rate, timeout = 1) as ser:
-        while True:
-            line = ser.readline() # need to now check for not line
-            if not line:
-                print("waiting on line - empty")
-                continue
-            try:
-                hcSanValA, signal_name, timestamp, data, hcSanValB = parse_in(line)
-                print(hcSanValA, signal_name, timestamp, data, hcSanValB)
-            except Exception as e:
-                print("Bad line")
-                continue
-    return
-
-def read_from_arduino_v2(port_name, baud_rate):
-    ser = serial.Serial(port_name, baud_rate, timeout = 1)
-    time.sleep(2)
-    while True:
-        while ser.in_waiting > 16:
-            line = ser.readline().decode('utf-8').rstrip()
-            hcSanValA, signal_name, timestamp, data, hcSanValB = parse_in(line)
-            entry = [hcSanValA, signal_name, timestamp, data, hcSanValB]
-            gv.buffer.put(entry)
-        time.sleep(0.1)
-    # Add error checks for port etc
-
-def read_from_arduino_v3(port_name, baud_rate):
-    ser = serial.Serial(port_name, baud_rate, timeout = 1)
-    time.sleep(2)
-    try:
-        while True:
-            if ser.in_waiting > 0:
-                line = ser.readline().decode('utf-8', errors='ignore').rstrip()
-                print(line)
-    except KeyboardInterrupt:
-        print("Exiting...")
-        ser.close()
-
-# def __main__():
-
-read_bin_file("output.bin")
-
-port_name = "/dev/ttyUSB0"
-baud_rate = 115200
-
-def read_from_arduino_v4(port_name, baud_rate):
     ser = serial.Serial(port_name, baud_rate, timeout = 1)
     time.sleep(2)
     try:
@@ -202,3 +135,9 @@ def read_from_arduino_v4(port_name, baud_rate):
         print("Exiting...")
         ser.close()
 
+
+port_name = "/dev/ttyUSB0"
+baud_rate = 115200
+if __name__ == "__main__":
+    while True:
+        read_from_arduino()

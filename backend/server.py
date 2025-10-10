@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-import global_vars as gv
+from . import global_vars as gv
 from queue import Empty
 
 app = FastAPI()
