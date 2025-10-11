@@ -131,11 +131,15 @@ class TelemetryReceiver:
                     if not self.playback_paused and self.playback_index < len(self.playback_data):
                         data = self.playback_data[self.playback_index]
                         self.playback_index += 1
-                        logging.info(f"▶️ Playback: {self.playback_index}/{len(self.playback_data)} - Speed: {data['vehicle_speed']:.1f} km/h")
-                        time.sleep(API_POLL_RATE)
+                        # Downsample: only send every 10th data point for smoother playback
+                        if self.playback_index % 10 == 0:
+                            logging.info(f"▶️ Playback: {self.playback_index}/{len(self.playback_data)} - Speed: {data['speedMPH']:.1f} mph")
+                            time.sleep(0.005)  # 5ms between displayed points
+                        else:
+                            data = None  # Skip this data point  
                     elif self.playback_index >= len(self.playback_data):
                         # Playback finished - restore normal mode
-                        logging.info("🏁 Playback finished, restoring normal mode")
+                        logging.info(" Playback finished, restoring normal mode")
                         self.stop_playback()
                         time.sleep(1)
                         continue
@@ -246,8 +250,8 @@ class TelemetryReceiver:
                     if line.startswith('{') and line.endswith('}'):
                         try:
                             data = json.loads(line)
-                            # Validate that we have the required fields
-                            required_fields = ['timestamp', 'vehicle_speed', 'battery_voltage', 'battery_soc']
+                            # Validate that we have the required fields (use standard field names)
+                            required_fields = ['timestamp', 'speedMPH', 'pack_voltage', 'pack_SOC']
                             if all(field in data for field in required_fields):
                                 self.playback_data.append(data)
                             else:
@@ -266,7 +270,7 @@ class TelemetryReceiver:
                             json_str = json_str.replace("'", '"')
                             if json_str.startswith('{') and json_str.endswith('}'):
                                 data = json.loads(json_str)
-                                required_fields = ['timestamp', 'vehicle_speed', 'battery_voltage', 'battery_soc']
+                                required_fields = ['timestamp', 'speedMPH', 'pack_voltage', 'pack_SOC']
                                 if all(field in data for field in required_fields):
                                     self.playback_data.append(data)
                                 else:

@@ -215,42 +215,114 @@ def create_temperature_timeseries(data: Dict[str, Any]) -> go.Figure:
     return fig
 
 
-def create_temperature_bar_chart(data: Dict[str, Any]) -> go.Figure:
-    """Create temperature bar chart"""
-    if not data['timestamp']:
-        avg_temp, max_temp = 0, 0
-    else:
-        avg_temp = data['avg_temp'][-1]
-        max_temp = data['max_cell_temp'][-1]
+# def create_temperature_bar_chart(data: Dict[str, Any]) -> go.Figure:
+#     """Create temperature bar chart"""
+#     if not data['timestamp']:
+#         avg_temp, max_temp = 0, 0
+#     else:
+#         avg_temp = data['avg_temp'][-1] if data['avg_temp'][-1] is not None else 0
+#         max_temp = data['max_cell_temp'][-1] if data['max_cell_temp'][-1] is not None else 0
 
-    fig = go.Figure(go.Bar(
-        x=['Avg Temp', 'Max Cell Temp'],
-        y=[avg_temp, max_temp],
-        marker_color=[
-            CHART_COLORS['inverter_temp'],
-            CHART_COLORS['max_cell_temp']
-        ],
-        text=[f'{avg_temp:.1f}°C', f'{max_temp:.1f}°C'],
-        textposition='auto',
-        textfont=dict(color='#1e2329', size=CHART_FONT_SIZE, family=CHART_FONT)
-    ))
+#     fig = go.Figure(go.Bar(
+#         x=['Avg Temp', 'Max Cell Temp'],
+#         y=[avg_temp, max_temp],
+#         marker_color=[
+#             CHART_COLORS['inverter_temp'],
+#             CHART_COLORS['max_cell_temp']
+#         ],
+#         text=[f'{avg_temp:.1f}°C', f'{max_temp:.1f}°C'],
+#         textposition='auto',
+#         textfont=dict(color='#1e2329', size=CHART_FONT_SIZE, family=CHART_FONT)
+#     ))
     
+#     fig.update_layout(
+#         autosize=False,
+#         title=dict(
+#             text="Current Temperatures",
+#             font=dict(color='#e8e8e8', size=TITLE_FONT_SIZE, family=CHART_FONT)
+#         ),
+#         yaxis_title="Temperature (°C)",
+#         yaxis=dict(color='#e8e8e8', gridcolor='#34495e', range=[0, 80], fixedrange=True),
+#         xaxis=dict(color='#e8e8e8', fixedrange=True),
+#         height=TEMP_CHART_HEIGHT,
+#         margin=TEMP_CHART_MARGIN,
+#         plot_bgcolor='rgba(0,0,0,0)',
+#         paper_bgcolor='rgba(0,0,0,0)',
+#         font=dict(color='#e8e8e8', family=CHART_FONT)
+#     )
+    
+#     return fig
+
+def create_temperature_number_display(data: Dict[str, Any]) -> go.Figure:
+    """Create temperature numeric indicators (Avg Temp and Max Cell Temp) with deltas and large font."""
+
+    if not data.get('timestamp'):
+        avg_temp = max_temp = prev_avg = prev_max = 0
+    else:
+        avg_temp = data['avg_temp'][-1] if data['avg_temp'] and data['avg_temp'][-1] is not None else 0
+        max_temp = data['max_cell_temp'][-1] if data['max_cell_temp'] and data['max_cell_temp'][-1] is not None else 0
+        prev_avg = data['avg_temp'][-2] if len(data['avg_temp']) > 1 and data['avg_temp'][-2] is not None else avg_temp
+        prev_max = data['max_cell_temp'][-2] if len(data['max_cell_temp']) > 1 and data['max_cell_temp'][-2] is not None else max_temp
+
+    fig = go.Figure()
+
+    # --- Average Temperature Indicator ---
+    fig.add_trace(go.Indicator(
+        mode="number+delta",
+        value=avg_temp,
+        delta={
+            'reference': prev_avg,
+            'relative': False,       # absolute delta (°C)
+            'increasing': {'color': '#ff6347'},   # red for hotter
+            'decreasing': {'color': '#00ff7f'},   # green for cooler
+            'font': {'size': 24}
+        },
+        number={
+            'suffix': " °C",
+            'font': dict(color='lightgray', size=60, family=CHART_FONT)
+        },
+        title={
+            'text': "<b>Average Cell Temperature</b><br></span>",
+            'font': dict(color='#e8e8e8', family=CHART_FONT, size=CHART_FONT_SIZE + 4)
+        },
+        domain={'x': [0, 0.48], 'y': [0, 1]}
+    ))
+
+    # --- Max Cell Temperature Indicator ---
+    fig.add_trace(go.Indicator(
+        mode="number+delta",
+        value=max_temp,
+        delta={
+            'reference': prev_max,
+            'relative': False,
+            'increasing': {'color': '#ff6347'},
+            'decreasing': {'color': '#00ff7f'},
+            'font': {'size': 24}
+        },
+        number={
+            'suffix': " °C",
+            'font': dict(color='lightgray', size=60, family=CHART_FONT)
+        },
+        title={
+            'text': "<b>Max Cell Temperature</b><br></span>",
+            'font': dict(color='#e8e8e8', family=CHART_FONT, size=CHART_FONT_SIZE + 4)
+        },
+        domain={'x': [0.52, 1], 'y': [0, 1]}
+    ))
+
     fig.update_layout(
         autosize=False,
+        height=300,
+        margin=dict(l=20, r=20, t=50, b=20),
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
         title=dict(
             text="Current Temperatures",
-            font=dict(color='#e8e8e8', size=TITLE_FONT_SIZE, family=CHART_FONT)
+            font=dict(color='#e8e8e8', size=TITLE_FONT_SIZE + 2, family=CHART_FONT)
         ),
-        yaxis_title="Temperature (°C)",
-        yaxis=dict(color='#e8e8e8', gridcolor='#34495e', range=[0, 80], fixedrange=True),
-        xaxis=dict(color='#e8e8e8', fixedrange=True),
-        height=TEMP_CHART_HEIGHT,
-        margin=TEMP_CHART_MARGIN,
-        plot_bgcolor='rgba(0,0,0,0)',
-        paper_bgcolor='rgba(0,0,0,0)',
         font=dict(color='#e8e8e8', family=CHART_FONT)
     )
-    
+
     return fig
 
 
@@ -365,16 +437,16 @@ def register_chart_callbacks(app, telemetry_receiver):
         if n_clicks is None:
             n_clicks = 0
 
-        # Check if we have data - if not, show empty/zero values  
+        # Check if we have data - if not, show empty/zero values
         if not data or not data.get('timestamp') or len(data['timestamp']) == 0:
             button_text = "Switch to Time Series" if n_clicks % 2 == 0 else "Switch to Current Values"
-            
+
             if n_clicks % 2 == 1:
                 # Time series mode when no data
                 return create_empty_temperature_timeseries(), button_text
             else:
                 # Current values mode when no data - show zeros
-                return create_empty_temperature_bar_chart(), button_text
+                return create_temperature_number_display(data if data else {}), button_text
 
         # Normal operation when we have data
         if n_clicks % 2 == 1:
@@ -382,7 +454,8 @@ def register_chart_callbacks(app, telemetry_receiver):
             return create_temperature_timeseries(data), button_text
         else:
             button_text = "Switch to Time Series"
-            return create_temperature_bar_chart(data), button_text
+            # return create_temperature_bar_chart(data), button_text
+            return create_temperature_number_display(data), button_text
 
     @app.callback(
         Output('voltage-status-indicator', 'children'),

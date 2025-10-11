@@ -43,35 +43,35 @@ CHART_COLORS = {
 # Gauge Configurations
 SPEED_GAUGE_CONFIG = {
     'range': [None, 150],
-    'bar_color': "darkblue",
+    'bar_color': "#00274C",
     'steps': [
-        {'range': [0, 50], 'color': "lightgray"},
-        {'range': [50, 100], 'color': "gray"},
-        {'range': [100, 200], 'color': "green"}
+        {'range': [0, 200], 'color': "lightgray"},
+        # {'range': [50, 100], 'color': "gray"},
+        # {'range': [100, 200], 'color': "green"}
     ],
     'threshold': {'line': {'color': "red", 'width': 4}, 'thickness': 0.75, 'value': 120}
 }
 
 VOLTAGE_GAUGE_CONFIG = {
-    'range': [300, 420],
-    'bar_color': "#27ae60",
+    'range': [300, 600],
+    'bar_color': "#00274C",
     'steps': [
-        {'range': [300, 340], 'color': "#e74c3c"},
-        {'range': [340, 380], 'color': "#f39c12"},
-        {'range': [380, 420], 'color': "#2c3e50"}
+        {'range': [300, 350], 'color': "#e74c3c"},
+        {'range': [350, 600], 'color': "lightgray"}
+        #{'range': [420, 600], 'color': "#2c3e50"}
     ],
-    'threshold': {'line': {'color': "#e74c3c", 'width': 4}, 'thickness': 0.75, 'value': 320}
+    'threshold': {'line': {'color': "#e74c3c", 'width': 4}, 'thickness': 0, 'value': 320}
 }
 
 SOC_GAUGE_CONFIG = {
     'range': [0, 100],
-    'bar_color': "#ffd700",
+    'bar_color': "#00274C",
     'steps': [
         {'range': [0, 20], 'color': "#e74c3c"},
-        {'range': [20, 50], 'color': "#f39c12"},
-        {'range': [50, 100], 'color': "#2c3e50"}
+        {'range': [20, 100], 'color': "lightgray"},
+        #{'range': [50, 100], 'color': "lightgray"}
     ],
-    'threshold': {'line': {'color': "#e74c3c", 'width': 4}, 'thickness': 0.75, 'value': 15}
+    'threshold': {'line': {'color': "#e74c3c", 'width': 4}, 'thickness': 0, 'value': 15}
 }
 
 # File paths

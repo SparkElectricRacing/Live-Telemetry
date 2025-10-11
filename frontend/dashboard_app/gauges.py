@@ -30,7 +30,7 @@ def create_speed_gauge(data: Dict[str, Any]) -> go.Figure:
             'axis': {'range': SPEED_GAUGE_CONFIG['range']},
             'bar': {'color': SPEED_GAUGE_CONFIG['bar_color']},
             'steps': SPEED_GAUGE_CONFIG['steps'],
-            'threshold': SPEED_GAUGE_CONFIG['threshold']
+            #'threshold': SPEED_GAUGE_CONFIG['threshold']
         }
     ))
     
