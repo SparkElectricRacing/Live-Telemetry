@@ -85,13 +85,13 @@ LOG_DIRECTORY.mkdir(exist_ok=True)
 
 # Status indicator thresholds
 VOLTAGE_THRESHOLDS = {
-    'good': 380,
-    'caution': 340
+    'good': 350,
+    'warning': 0
 }
 
 SOC_THRESHOLDS = {
-    'good': 50,
-    'caution': 20
+    'good': 20,
+    'warning': 0
 }
 
 # Data limits

@@ -17,7 +17,7 @@ import sys, re, json, datetime
 from collections import defaultdict, deque
 
 # ---- Optionally set these to compute speedMPH from motor rpm
-GEAR_RATIO = 3.125         # 16:50
+GEAR_RATIO = 3.125         # 16:50 GEAR RATIO
 TIRE_CIRCUMFERENCE_M = 2.057  #  circumference in m 
 
 LINE_RE = re.compile(r"\((?P<ts>\d+\.\d+)\)\s+\S+\s+(?P<id>[0-9A-Fa-f]+)#(?P<data>[0-9A-Fa-f]{2,16})")

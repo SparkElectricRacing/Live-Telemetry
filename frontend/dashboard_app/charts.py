@@ -468,24 +468,20 @@ def register_chart_callbacks(app, telemetry_receiver):
         if not data or not data['timestamp'] or not data['pack_voltage']:
             return dash.no_update
 
-        # Voltage status
+        # Voltage status - two states: good or warning
         voltage = data['pack_voltage'][-1]
         if voltage >= VOLTAGE_THRESHOLDS['good']:
             v_status, v_class = "OK", "status-good"
-        elif voltage >= VOLTAGE_THRESHOLDS['caution']:
-            v_status, v_class = "Caution", "status-caution"
         else:
             v_status, v_class = "Warning", "status-warning"
 
         v_text = f"Voltage: {v_status}"
         v_classname = f"status-indicator {v_class}"
 
-        # SOC status
+        # SOC status - two states: good or warning
         soc = data['pack_SOC'][-1]
         if soc >= SOC_THRESHOLDS['good']:
             s_status, s_class = "OK", "status-good"
-        elif soc >= SOC_THRESHOLDS['caution']:
-            s_status, s_class = "Caution", "status-caution"
         else:
             s_status, s_class = "Warning", "status-warning"
 

@@ -189,11 +189,12 @@ def create_dashboard_layout():
 
             # Log File Summary Section
             html.Div([
-                html.H3("Log File Analysis", className="section-title"),
+                # Title and instruction on same line
                 html.Div([
+                    html.H3("Log File Analysis", className="section-title", style={"display": "inline-block", "margin-right": "20px", "margin-bottom": "0"}),
                     html.P("Click on a log file above to view detailed analysis and summary statistics",
-                           className="summary-instruction")
-                ], className="summary-instruction-section"),
+                           className="summary-instruction", style={"display": "inline-block", "margin-bottom": "0"})
+                ], style={"margin-bottom": "20px"}),
 
                 # Summary Statistics Cards
                 html.Div(id="summary-stats-container", className="summary-stats-container"),

@@ -882,14 +882,12 @@ def update_status_indicators(data):
     if not data or not data['timestamp'] or not data['battery_voltage']:
         return dash.no_update
     voltage = data['battery_voltage'][-1]
-    if voltage >= 380: v_status, v_class = "OK", "status-good"
-    elif voltage >= 340: v_status, v_class = "Caution", "status-caution"
+    if voltage >= 350: v_status, v_class = "OK", "status-good"
     else: v_status, v_class = "Warning", "status-warning"
     v_text = f"Voltage: {v_status}"
     v_classname = f"status-indicator {v_class}"
     soc = data['battery_soc'][-1]
-    if soc >= 50: s_status, s_class = "OK", "status-good"
-    elif soc >= 20: s_status, s_class = "Caution", "status-caution"
+    if soc >= 20: s_status, s_class = "OK", "status-good"
     else: s_status, s_class = "Warning", "status-warning"
     s_text = f"SOC: {s_status}"
     s_classname = f"status-indicator {s_class}"
