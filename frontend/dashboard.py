@@ -34,6 +34,10 @@ initial_data = {
     'max_cell_temp': [0] * MAX_POINTS,
     'inverter_temp': [0] * MAX_POINTS
 }
+def _empty_store():
+    # Start with truly empty series so the plots refresh cleanly
+    return {k: [] for k in initial_data.keys()}
+
 os.makedirs(LOG_DIRECTORY, exist_ok=True)
 logging.basicConfig(
     level=logging.INFO,
@@ -604,6 +608,37 @@ def render_layout_editor(layout_config):
     add_row_button = html.Button("＋ Add Row", id={'type': 'add-row-btn', 'index': 'main'},
                                  n_clicks=0, className="editor-add-row-btn")
     return html.Div([editor_header] + editor_rows + [add_row_button])
+@callback(
+    Output('telemetry-store', 'data', allow_duplicate=True),
+    Input('mode-change-signal', 'data'),   # set in handle_mode_selection
+    Input('play-btn', 'n_clicks'),         # pressing Play should also reset
+    State('selected-log-file', 'value'),
+    prevent_initial_call=True,
+)
+def reset_store_on_playback(mode_signal, play_clicks, selected_file):
+    # Identify what triggered
+    trig = dash.callback_context.triggered[0]['prop_id'].split('.')[0] if dash.callback_context.triggered else None
+
+    # If switching the dropdown to "playback", clear current data so the UI refreshes
+    if trig == 'mode-change-signal' and mode_signal and mode_signal.get('mode') == 'playback':
+        # also clear any leftover points in the queue
+        try:
+            while not telemetry.data_queue.empty():
+                telemetry.data_queue.get_nowait()
+        except queue.Empty:
+            pass
+        return _empty_store()
+
+    # If the user clicks Play with a file selected, clear right before ingest
+    if trig == 'play-btn' and selected_file:
+        try:
+            while not telemetry.data_queue.empty():
+                telemetry.data_queue.get_nowait()
+        except queue.Empty:
+            pass
+        return _empty_store()
+
+    raise dash.exceptions.PreventUpdate
 
 @callback(
     Output("download-layout-json", "data"),
