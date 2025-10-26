@@ -403,40 +403,94 @@ app.layout = html.Div(
                     html.Div([html.Div([dcc.Graph(id="temperature-timeseries")], className="chart-container-full")], className="chart-row"),
 
                     # ------- MOVED HERE: Log Management & Playback -------
+                    # ------- STYLED: Log Management & Playback -------
+                    # ------- STYLED + SCROLL: Log Management & Playback -------
+                    # ------- RESPONSIVE + NO CLIP: Log Management & Playback -------
                     html.Div([
-                        html.H3("Log Management", className="section-title"),
+                        html.Div([html.H3("Log Management & Playback")], className="chart-header"),
+
                         html.Div([
+
+                            # LEFT CARD: files + ops
                             html.Div([
                                 html.H4("Available Log Files"),
-                                html.Div(id="log-files-list"),
-                                html.Button("Refresh List", id="refresh-logs-btn", n_clicks=0, className="control-btn"),
+
+                                # The list itself (no fixed height now; the card will scroll)
+                                html.Div(id="log-files-list", style={"paddingRight": "8px"}),
+
+                                html.Div([html.Button("Refresh List", id="refresh-logs-btn",
+                                                    n_clicks=0, className="control-btn")],
+                                        style={"marginTop": "10px"}),
+
                                 html.Div([
                                     dcc.Input(id="file-operation-input", type="text",
-                                              placeholder="Enter filename to delete/rename", style={"width": "200px"}),
-                                    html.Button("Delete", id="delete-file-btn", n_clicks=0, className="control-btn stop-btn"),
-                                    html.Button("Rename", id="rename-file-btn", n_clicks=0, className="control-btn"),
-                                    dcc.Input(id="new-name-input", type="text", placeholder="New name", style={"width": "150px"}),
-                                    html.Button("Delete All", id="delete-all-btn", n_clicks=0, className="control-btn stop-btn",
-                                                style={"margin-left": "20px", "background-color": "#8B0000"}),
-                                ], className="file-operations", style={"margin-top": "10px"}),
-                                html.Div(id="file-operation-status", className="operation-status")
-                            ], className="log-list-container"),
+                                            placeholder="Enter filename to delete/rename",
+                                            style={"width": "220px"}),
+                                    html.Button("Delete", id="delete-file-btn", n_clicks=0,
+                                                className="control-btn stop-btn"),
+                                    html.Button("Rename", id="rename-file-btn", n_clicks=0,
+                                                className="control-btn"),
+                                    dcc.Input(id="new-name-input", type="text",
+                                            placeholder="New name", style={"width": "160px"}),
+                                    html.Button("Delete All", id="delete-all-btn", n_clicks=0,
+                                                className="control-btn stop-btn",
+                                                style={"marginLeft": "12px"}),
+                                ], className="file-operations", style={"marginTop": "12px"}),
+
+                                html.Div(id="file-operation-status", className="operation-status",
+                                        style={"marginTop": "6px"}),
+
+                                # add some breathing room at the bottom
+                                html.Div(style={"height": "8px"})
+                            ],
+                            className="chart-container",
+                            # IMPORTANT: let the card scroll instead of clipping
+                            style={
+                                "height": "auto",
+                                "maxHeight": "calc(100vh - 220px)",  # fits the viewport
+                                "overflowY": "auto",
+                                "paddingBottom": "12px"
+                            }),
+
+                            # RIGHT CARD: playback
                             html.Div([
                                 html.H4("Playback Controls"),
+                                html.P(
+                                    "Set 'Data Source' to '▶️ Playback' mode above, then select a log file:",
+                                    style={"opacity": 0.8, "fontStyle": "italic", "marginBottom": "10px"}
+                                ),
+                                dcc.Dropdown(id="selected-log-file",
+                                            placeholder="Select a log file for playback"),
                                 html.Div([
-                                    html.P("Set 'Data Source' to '▶️ Playback' mode above, then select a log file:",
-                                           style={"color": "#95a5a6", "font-style": "italic", "margin-bottom": "10px"}),
-                                    dcc.Dropdown(id="selected-log-file", placeholder="Select a log file for playback"),
-                                    html.Div([
-                                        html.Button("Play", id="play-btn", n_clicks=0, className="control-btn start-btn"),
-                                        html.Button("Pause", id="pause-btn", n_clicks=0, className="control-btn"),
-                                        html.Button("Stop", id="stop-playback-btn", n_clicks=0, className="control-btn stop-btn"),
-                                    ], className="playback-controls"),
-                                    html.Div(id="playback-status", className="playback-status")
-                                ])
-                            ], className="playback-container")
-                        ], className="log-management-row")
-                    ], className="log-management-section"),
+                                    html.Button("Play",  id="play-btn",  n_clicks=0,
+                                                className="control-btn start-btn"),
+                                    html.Button("Pause", id="pause-btn", n_clicks=0,
+                                                className="control-btn"),
+                                    html.Button("Stop",  id="stop-playback-btn", n_clicks=0,
+                                                className="control-btn stop-btn"),
+                                ], className="playback-controls", style={"marginTop": "10px"}),
+
+                                html.Div(id="playback-status", className="playback-status",
+                                        style={"marginTop": "10px"}),
+
+                                html.Div(style={"height": "8px"})
+                            ],
+                            className="chart-container",
+                            style={
+                                "height": "auto",
+                                "maxHeight": "calc(100vh - 220px)",
+                                "overflowY": "auto",
+                                "paddingBottom": "12px"
+                            }),
+
+                        ], className="chart-row", style={"alignItems": "stretch", "gap": "16px"}),
+
+                    ], className="chart-container-full",
+                    style={"height": "auto", "overflow": "visible"}),
+                    # ---------------------------------------------------------------
+
+                    # -----------------------------------------------------------
+
                     # ----------------------------------------------------
                 ], className="dashboard-content"),
             ]),
