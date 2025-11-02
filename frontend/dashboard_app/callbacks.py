@@ -8,6 +8,7 @@ import logging
 import dash
 from datetime import datetime
 from dash import Output, Input, State, html, callback_context, exceptions
+from tabs import tab_dashboard, tab_analysis
 
 from config import MAX_DATA_POINTS, LOG_DIRECTORY
 

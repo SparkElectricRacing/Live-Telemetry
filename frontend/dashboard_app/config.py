@@ -78,9 +78,9 @@ SOC_GAUGE_CONFIG = {
 BASE_DIR = pathlib.Path(__file__).parent
 TEMPLATES_DIR = BASE_DIR / "templates"
 ASSETS_DIR = BASE_DIR / "assets"
-LOG_DIRECTORY = BASE_DIR.parent.parent / "telemetry_logs"
 
-# Ensure log directory exists
+# Log directory (shared between dashboard and analysis tabs)
+LOG_DIRECTORY = BASE_DIR / "logs"
 LOG_DIRECTORY.mkdir(exist_ok=True)
 
 # Status indicator thresholds
