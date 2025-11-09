@@ -545,7 +545,7 @@ def create_dynamic_figure(variable, chart_type, data):
     fig.update_layout(height=300, margin=dict(l=40, r=20, t=60, b=40),
                       plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
                       font=dict(color='#e8e8e8', family=CHART_FONT),
-                      transition={'duration': 300, 'easing': 'cubic-in-out'})
+                      transition={'duration': 50, 'easing': 'cubic-in-out'})
     return fig
 
 @callback(
@@ -1087,7 +1087,7 @@ def update_temp_overview(data, n_clicks):
                           height=260, margin=dict(l=20, r=20, t=80, b=20),
                           plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
                           font=dict(color='#e8e8e8', family=CHART_FONT),
-                          transition={'duration': 300, 'easing': 'cubic-in-out'})
+                          transition={'duration': 50, 'easing': 'cubic-in-out'})
         return fig, button_text
 
 @callback(Output('speed-gauge', 'figure'), Input('telemetry-store', 'data'))
@@ -1107,7 +1107,7 @@ def update_speed_gauge(data):
     fig.update_layout(height=300, margin=dict(l=20, r=20, t=80, b=20),
                       plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
                       font=dict(color='#e8e8e8', size=CHART_FONT_SIZE, family=CHART_FONT),
-                      transition={'duration': 300, 'easing': 'cubic-in-out'})
+                      transition={'duration': 50, 'easing': 'cubic-in-out'})
     return fig
 
 @callback(Output('voltage-gauge', 'figure'), Input('telemetry-store', 'data'))
@@ -1127,7 +1127,7 @@ def update_voltage_gauge(data):
     fig.update_layout(height=300, margin=dict(l=20, r=20, t=80, b=20),
                       plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
                       font=dict(color='#e8e8e8', size=CHART_FONT_SIZE, family=CHART_FONT),
-                      transition={'duration': 300, 'easing': 'cubic-in-out'})
+                      transition={'duration': 50, 'easing': 'cubic-in-out'})
     return fig
 
 @callback(Output('soc-gauge', 'figure'), Input('telemetry-store', 'data'))
@@ -1147,7 +1147,7 @@ def update_soc_gauge(data):
     fig.update_layout(height=300, margin=dict(l=20, r=20, t=80, b=20),
                       plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
                       font=dict(color='#e8e8e8', size=CHART_FONT_SIZE, family=CHART_FONT),
-                      transition={'duration': 300, 'easing': 'cubic-in-out'})
+                      transition={'duration': 50, 'easing': 'cubic-in-out'})
     return fig
 
 @callback(Output('speed-timeseries', 'figure'), Input('telemetry-store', 'data'))
@@ -1166,7 +1166,7 @@ def update_speed_timeseries(data):
                       plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
                       font=dict(color='#e8e8e8', family=CHART_FONT),
                       legend=dict(font=dict(color='#e8e8e8', family=CHART_FONT)),
-                      transition={'duration': 300, 'easing': 'cubic-in-out'})
+                      transition={'duration': 50, 'easing': 'cubic-in-out'})
     return fig
 
 @callback(Output('battery-timeseries', 'figure'), Input('telemetry-store', 'data'))
@@ -1192,7 +1192,7 @@ def update_battery_timeseries(data):
                       plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
                       font=dict(color='#e8e8e8', family=CHART_FONT),
                       legend=dict(font=dict(color='#e8e8e8', family=CHART_FONT)),
-                      transition={'duration': 300, 'easing': 'cubic-in-out'})
+                      transition={'duration': 50, 'easing': 'cubic-in-out'})
     return fig
 
 @callback(Output('temperature-timeseries', 'figure'), Input('telemetry-store', 'data'))
@@ -1215,7 +1215,7 @@ def update_temperature_timeseries(data):
                       plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
                       font=dict(color='#e8e8e8', family=CHART_FONT),
                       legend=dict(font=dict(color='#e8e8e8', family=CHART_FONT)),
-                      transition={'duration': 300, 'easing': 'cubic-in-out'})
+                      transition={'duration': 50, 'easing': 'cubic-in-out'})
     return fig
 
 if __name__ == '__main__':
