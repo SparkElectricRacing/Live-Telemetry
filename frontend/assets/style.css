@@ -364,3 +364,116 @@ body {
     background-color: var(--container-bg) !important;
     border: 1px solid #34495e !important;
 }
+
+/* --- NEW: Layout Editor Styles --- */
+
+/* Main container for the editor tab */
+.layout-editor-content {
+    padding: 20px;
+    background-color: #0f1419; /* Matches your app's background */
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* Header (H2 and Export button) */
+.editor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #34495e;
+}
+
+.editor-header h2 {
+    color: #e8e8e8;
+    margin: 0;
+}
+
+/* A single "Row" block in the editor */
+.editor-row {
+    background-color: #1e2329; /* Matches your chart containers */
+    border: 1px solid #34495e;
+    border-radius: 8px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.editor-row h4 {
+    margin: 0;
+    color: #e8e8e8;
+}
+
+/* The container for all the column-editor cards */
+.editor-row-content {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+/* A single "Column" card in the editor */
+.editor-col {
+    flex: 1;
+    min-width: 200px;
+    background-color: #0f1419; /* Darker inner background */
+    border: 1px solid #34495e;
+    border-radius: 5px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Controls at the bottom of a row (Add Col, Remove Row) */
+.editor-row-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 10px;
+    border-top: 1px solid #34495e;
+}
+
+/* The big "Add Row" button at the bottom */
+.editor-add-row-btn {
+    /* Uses your existing button style but makes it bigger */
+    padding: 15px 25px;
+    font-size: 16px;
+    font-weight: bold;
+    background-color: #27ae60;
+    border: none;
+    border-radius: 5px;
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.editor-add-row-btn:hover {
+    background-color: #2ecc71;
+}
+
+/* Styling for the dropdowns inside the editor */
+.editor-col .Select-control {
+    background-color: #34495e;
+    border: none;
+}
+
+.editor-col .Select-value-label,
+.editor-col .Select-placeholder {
+    color: #e8e8e8 !important;
+}
+
+.editor-col .Select-menu-outer {
+    background-color: #1e2329;
+    border: 1px solid #34495e;
+}
+
+.editor-col .Select-option {
+    color: #e8e8e8;
+    background-color: transparent;
+}
+
+.editor-col .Select-option:hover {
+    background-color: #34495e;
+}

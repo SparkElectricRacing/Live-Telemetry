@@ -41,7 +41,7 @@ def register_all_callbacks(app, telemetry_receiver):
             telemetry_receiver.stop()
             logging.info("elemetry collection stopped")
             return "Stopped"
-        
+            
     # update the stored telemetry data
     @app.callback(
         Output('telemetry-store', 'data'),

@@ -11,6 +11,7 @@ from layout import create_dashboard_layout
 from charts import register_chart_callbacks
 from callbacks import register_all_callbacks
 from summary_callbacks import register_summary_callbacks
+from layout_editor_callbacks import register_layout_editor_callbacks 
 from config import TEMPLATES_DIR
 
 
@@ -36,10 +37,11 @@ def create_app():
     register_chart_callbacks(app, telemetry)
     register_all_callbacks(app, telemetry)
     register_summary_callbacks(app)
+    register_layout_editor_callbacks(app)
 
     return app, telemetry
 
-
+# ... (rest of your main.py file is unchanged) ...
 def main():
     """Main entry point"""
     # Configure logging - only show warnings and errors
