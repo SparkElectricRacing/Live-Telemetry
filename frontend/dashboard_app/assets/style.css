@@ -798,9 +798,96 @@ body {
     margin-bottom: 20px;
     border-bottom: 2px solid #34495e;
     background-color: var(--container-bg);
-    padding: 10px 10px 0 10px;
-    border-radius: var(--border-radius) var(--border-radius) 0 0;
 }
+
+.custom-tab {
+    padding: 12px 24px;
+    color: #95a5a6;
+    border-top: 3px solid transparent;
+    border-left: 1px solid transparent;
+    border-right: 1px solid transparent;
+    background-color: transparent;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: bold;
+}
+
+.custom-tab--selected {
+    color: var(--primary-color);
+    border-top: 3px solid var(--primary-color);
+    border-left: 1px solid #34495e;
+    border-right: 1px solid #34495e;
+    background-color: rgba(255, 215, 0, 0.05);
+}
+
+.custom-tab:hover {
+    color: var(--text-color);
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Map Section */
+.map-section {
+    background: var(--container-bg);
+    border-radius: var(--border-radius);
+    padding: 20px;
+    margin-top: 20px;
+    border: 1px solid #2c3e50;
+}
+
+.map-container {
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid #34495e;
+}
+
+/* GPS Puck Icon Wrapper */
+.gps-puck-wrapper {
+    background: transparent !important;
+    border: none !important;
+}
+
+/* GPS Puck Icon */
+.gps-puck {
+    width: 16px;
+    height: 16px;
+    background-color: #007AFF;
+    border: 3px solid white;
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(0, 122, 255, 0.6);
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+/* Optional: Add a pulsing effect */
+.gps-puck::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 40px;
+    height: 40px;
+    background-color: rgba(0, 122, 255, 0.2);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+    z-index: -1;
+}
+
+@keyframes pulse {
+    0% {
+        transform: translate(-50%, -50%) scale(0.5);
+        opacity: 1;
+    }
+
+    100% {
+        transform: translate(-50%, -50%) scale(1.2);
+        opacity: 0;
+    }
+}
+
+
 
 .custom-tab {
     background-color: transparent !important;

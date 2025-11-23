@@ -4,6 +4,7 @@ Dashboard layout components
 
 import dash
 from dash import html, dcc
+import dash_leaflet as dl
 import uuid  # <-- Import uuid
 
 from config import UPDATE_INTERVAL
@@ -41,6 +42,29 @@ def create_dashboard_layout():
     
     # This is your entire original layout, now inside a variable
     static_dashboard_content = html.Div([
+        # GPS Map Section (Moved to Top)
+        html.Div([
+            html.H3("GPS Location", className="section-title"),
+            html.Div([
+                dl.Map(center=[42.2929, -83.7160], zoom=15, children=[
+                    dl.TileLayer(),
+                    dl.DivMarker(
+                        position=[42.2929, -83.7160], 
+                        id="gps-marker", 
+                        iconOptions={
+                            "className": "gps-puck-wrapper",
+                            "html": '<div class="gps-puck"></div>',
+                            "iconSize": [24, 24],
+                            "iconAnchor": [12, 12]
+                        },
+                        children=[
+                            dl.Tooltip("Current Location")
+                        ]
+                    )
+                ], style={'width': '100%', 'height': '400px'}, id="gps-map"),
+            ], className="map-container")
+        ], className="map-section"),
+
         # Row 1: Speed and Battery Voltage
         html.Div([
             html.Div([
@@ -189,7 +213,7 @@ def create_dashboard_layout():
             html.Div([
                 dcc.Graph(id="summary-timeseries-plot")
             ], className="chart-container-full", id="summary-plot-container")
-        ], className="log-summary-section", id="log-summary-section")
+        ], className="log-summary-section", id="log-summary-section"),
     ], className="dashboard-content")
     
     

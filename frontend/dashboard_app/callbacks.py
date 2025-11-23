@@ -75,7 +75,9 @@ def register_all_callbacks(app, telemetry_receiver):
                     'high_cell_voltage': [],
                     'max_cell_temp': [],
                     'is_charging': [],
-                    'DTC1': []
+                    'DTC1': [],
+                    'gps_lat': [],
+                    'gps_lon': []
                 }
             else:
                 logging.info(" No new data points available - UI will not update")
@@ -97,7 +99,9 @@ def register_all_callbacks(app, telemetry_receiver):
                 'high_cell_voltage': [],
                 'max_cell_temp': [],
                 'is_charging': [],
-                'DTC1': []
+                'DTC1': [],
+                'gps_lat': [],
+                'gps_lon': []
             }
         else:
             data = existing_data.copy()
@@ -116,6 +120,15 @@ def register_all_callbacks(app, telemetry_receiver):
             data['max_cell_temp'].append(point.get('max_cell_temp', 0))
             data['is_charging'].append(point.get('is_charging', False))
             data['DTC1'].append(point.get('DTC1', 0))
+            
+            # --- NEW: Dummy GPS Data ---
+            # Simulate some movement around the center point (UMich North Campus)
+            import random
+            center_lat = 42.2929
+            center_lon = -83.7160
+            # Add small random offset
+            data.setdefault('gps_lat', []).append(center_lat + random.uniform(-0.0005, 0.0005))
+            data.setdefault('gps_lon', []).append(center_lon + random.uniform(-0.0005, 0.0005))
         
         # Keep only the last MAX_DATA_POINTS to prevent memory issues
         for key in data:
@@ -374,3 +387,17 @@ def register_all_callbacks(app, telemetry_receiver):
         elif tab == 'tab-editor':
             return hide, hide, show
         return show, hide, hide
+
+    # --- NEW: GPS Map Callback ---
+    @app.callback(
+        Output("gps-marker", "position"),
+        Input("telemetry-store", "data")
+    )
+    def update_gps_marker(data):
+        if data and 'gps_lat' in data and 'gps_lon' in data and len(data['gps_lat']) > 0:
+            # Get the latest GPS coordinates
+            lat = data['gps_lat'][-1]
+            lon = data['gps_lon'][-1]
+            return [lat, lon]
+        # Default dummy position if no data
+        return [42.2929, -83.7160]
