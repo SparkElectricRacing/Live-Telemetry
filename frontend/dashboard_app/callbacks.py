@@ -122,10 +122,10 @@ def register_all_callbacks(app, telemetry_receiver):
             data['DTC1'].append(point.get('DTC1', 0))
             
             # --- NEW: Dummy GPS Data ---
-            # Simulate some movement around the center point (UMich North Campus)
+            # Simulate some movement around the center point (Barber Motorsports Park)
             import random
-            center_lat = 42.2929
-            center_lon = -83.7160
+            center_lat = 33.53250
+            center_lon = -86.61889
             # Add small random offset
             data.setdefault('gps_lat', []).append(center_lat + random.uniform(-0.0005, 0.0005))
             data.setdefault('gps_lon', []).append(center_lon + random.uniform(-0.0005, 0.0005))
@@ -400,4 +400,4 @@ def register_all_callbacks(app, telemetry_receiver):
             lon = data['gps_lon'][-1]
             return [lat, lon]
         # Default dummy position if no data
-        return [42.2929, -83.7160]
+        return [33.53250, -86.61889]

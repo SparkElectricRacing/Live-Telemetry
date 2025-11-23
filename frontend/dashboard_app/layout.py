@@ -46,10 +46,10 @@ def create_dashboard_layout():
         html.Div([
             html.H3("GPS Location", className="section-title"),
             html.Div([
-                dl.Map(center=[42.2929, -83.7160], zoom=15, children=[
+                dl.Map(center=[33.53250, -86.61889], zoom=15, children=[
                     dl.TileLayer(),
                     dl.DivMarker(
-                        position=[42.2929, -83.7160], 
+                        position=[33.53250, -86.61889], 
                         id="gps-marker", 
                         iconOptions={
                             "className": "gps-puck-wrapper",
