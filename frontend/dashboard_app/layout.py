@@ -238,17 +238,16 @@ def create_dashboard_layout():
         ], className="top-row"),
         
         # --- NEW: Tabs to switch views ---
-        dcc.Tabs(id="dashboard-tabs", value='tab-static', children=[
-            dcc.Tab(label='Static Dashboard', value='tab-static', children=[
-                static_dashboard_content  # <-- Your entire original dashboard content
-            ]),
-            dcc.Tab(label='Custom Dashboard', value='tab-custom-view', children=[
-                html.Div(id='custom-dashboard-view-container', className="dashboard-content"),
-            ]),
-            dcc.Tab(label='Layout Editor', value='tab-editor', children=[
-                html.Div(id='layout-editor-container', className="layout-editor-content"),
-            ]),
+        dcc.Tabs(id="dashboard-tabs", value='tab-static', className='custom-tabs', children=[
+            dcc.Tab(label='Static Dashboard', value='tab-static', className='custom-tab', selected_className='custom-tab--selected'),
+            dcc.Tab(label='Custom Dashboard', value='tab-custom-view', className='custom-tab', selected_className='custom-tab--selected'),
+            dcc.Tab(label='Layout Editor', value='tab-editor', className='custom-tab', selected_className='custom-tab--selected'),
         ]),
+
+        # --- Content Containers (Controlled by Callback) ---
+        html.Div(id='static-dashboard-container', children=[static_dashboard_content]),
+        html.Div(id='custom-dashboard-view-container', className="dashboard-content"),
+        html.Div(id='layout-editor-container', className="layout-editor-content"),
 
         # --- Interval and Stores (some are new) ---
         dcc.Interval(id='interval-component', interval=UPDATE_INTERVAL, n_intervals=0),

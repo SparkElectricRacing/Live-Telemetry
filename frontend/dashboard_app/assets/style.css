@@ -1,9 +1,14 @@
 :root {
-    --primary-font: Arial, sans-serif; /* Replace with PRIMARY_FONT */
-    --chart-font: Arial;               /* Replace with CHART_FONT */
-    --chart-font-size: 12px;           /* Replace with CHART_FONT_SIZE */
-    --title-font-size: 16px;           /* Replace with TITLE_FONT_SIZE */
-    --border-radius: 20px;             /* Replace with BORDER_RADIUS */
+    --primary-font: Arial, sans-serif;
+    /* Replace with PRIMARY_FONT */
+    --chart-font: Arial;
+    /* Replace with CHART_FONT */
+    --chart-font-size: 12px;
+    /* Replace with CHART_FONT_SIZE */
+    --title-font-size: 16px;
+    /* Replace with TITLE_FONT_SIZE */
+    --border-radius: 20px;
+    /* Replace with BORDER_RADIUS */
     --background-color: #000000;
     --container-bg: #1e2329;
     --primary-color: #ffd700;
@@ -49,7 +54,7 @@ body {
     margin: 0;
     font-size: 2.5em;
     color: var(--primary-color);
-    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
     font-weight: bold;
     text-align: center;
 }
@@ -84,21 +89,26 @@ body {
 }
 
 /* Containers */
-.gauge-container, .chart-container, .chart-container-full {
+.gauge-container,
+.chart-container,
+.chart-container-full {
     flex: 1;
     background: var(--container-bg);
     border-radius: var(--border-radius);
-    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
     border: 1px solid #2c3e50;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
-    height: 300px;  /* adjust as needed */
+    height: 300px;
+    /* adjust as needed */
     min-height: 200px;
     max-height: 400px;
     overflow: hidden;
 }
 
 
-.gauge-container:hover, .chart-container:hover, .chart-container-full:hover {
+.gauge-container:hover,
+.chart-container:hover,
+.chart-container-full:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(255, 215, 0, 0.15);
 }
@@ -227,10 +237,10 @@ body {
     right: 20px;
     z-index: 10;
     padding: 5px 15px;
-    color: white; 
+    color: white;
     font-weight: bold;
     font-size: 0.9em;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 
     /* This is the key property for rounding the corners */
     border-radius: 15px;
@@ -238,17 +248,21 @@ body {
 
 /* --- Color classes for the indicator --- */
 
-.status-good { 
-    background-color: #28a745; /* Green */
+.status-good {
+    background-color: #28a745;
+    /* Green */
 }
 
-.status-caution { 
-    background-color: #ffc107; /* Yellow */
-    color: #1f2937; /* Darker text for better contrast */
+.status-caution {
+    background-color: #ffc107;
+    /* Yellow */
+    color: #1f2937;
+    /* Darker text for better contrast */
 }
 
-.status-warning { 
-    background-color: #dc3545; /* Red */
+.status-warning {
+    background-color: #dc3545;
+    /* Red */
 }
 
 .gauge-row,
@@ -263,7 +277,7 @@ body {
     flex: 1;
     background: var(--container-bg);
     border-radius: var(--border-radius);
-    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
     border: 1px solid #2c3e50;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
     height: 300px;
@@ -639,6 +653,7 @@ body {
     background-color: var(--container-bg) !important;
     border: 1px solid #34495e !important;
 }
+
 /* Clickable Log Files */
 .clickable-log-file {
     cursor: pointer;
@@ -775,4 +790,226 @@ body {
 
 .error-message {
     color: #e74c3c;
+}
+
+/* --- Custom Tab Styling --- */
+
+.custom-tabs {
+    margin-bottom: 20px;
+    border-bottom: 2px solid #34495e;
+    background-color: var(--container-bg);
+    padding: 10px 10px 0 10px;
+    border-radius: var(--border-radius) var(--border-radius) 0 0;
+}
+
+.custom-tab {
+    background-color: transparent !important;
+    border: none !important;
+    color: #95a5a6 !important;
+    font-family: var(--primary-font);
+    font-weight: bold;
+    font-size: 1.1em;
+    padding: 15px 25px !important;
+    transition: all 0.3s ease;
+    border-radius: 10px 10px 0 0;
+    cursor: pointer;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+}
+
+.custom-tab:hover {
+    color: var(--text-color) !important;
+    background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+.custom-tab--selected {
+    background-color: rgba(255, 215, 0, 0.1) !important;
+    color: var(--primary-color) !important;
+    border-bottom: 3px solid var(--primary-color) !important;
+}
+
+/* Remove default Dash tab styles that might interfere */
+.tab-container {
+    border: none !important;
+}
+
+/* --- Layout Editor Styling --- */
+
+.editor-container {
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.editor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #34495e;
+}
+
+.editor-title {
+    color: var(--primary-color);
+    margin: 0;
+    font-size: 2em;
+}
+
+.export-btn {
+    background-color: #3498db;
+    color: white;
+    font-size: 1.1em;
+    padding: 10px 20px;
+}
+
+.export-btn:hover {
+    background-color: #2980b9;
+}
+
+/* Row Card Styling */
+.editor-row-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid #34495e;
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 25px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+}
+
+.editor-row-card:hover {
+    border-color: #5dade2;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.row-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.row-title {
+    color: #bdc3c7;
+    margin: 0;
+    font-size: 1.3em;
+}
+
+.row-controls-top {
+    display: flex;
+    gap: 10px;
+}
+
+/* Column Grid Styling */
+.editor-columns-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+/* Column Card Styling */
+.editor-col-card {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid #2c3e50;
+    border-radius: 10px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.editor-col-label {
+    color: var(--primary-color);
+    font-weight: bold;
+    font-size: 0.9em;
+    margin-bottom: 5px;
+}
+
+/* Button Styling */
+.btn-add-col {
+    background-color: #27ae60;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-add-col:hover {
+    background-color: #2ecc71;
+}
+
+.btn-remove-row {
+    background-color: #c0392b;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-remove-row:hover {
+    background-color: #e74c3c;
+}
+
+.btn-remove-col {
+    background-color: rgba(231, 76, 60, 0.2);
+    color: #e74c3c;
+    border: 1px solid #e74c3c;
+    border-radius: 6px;
+    padding: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 5px;
+    transition: all 0.2s;
+}
+
+.btn-remove-col:hover {
+    background-color: #e74c3c;
+    color: white;
+}
+
+.add-row-container {
+    display: flex;
+    justify-content: center;
+    margin-top: 30px;
+    margin-bottom: 50px;
+}
+
+.btn-add-row {
+    background-color: transparent;
+    border: 2px dashed #3498db;
+    color: #3498db;
+    padding: 15px 40px;
+    border-radius: 10px;
+    font-size: 1.2em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+    width: 100%;
+    max-width: 500px;
+}
+
+.btn-add-row:hover {
+    background-color: rgba(52, 152, 219, 0.1);
+    transform: translateY(-2px);
+}
+
+/* Dropdown Overrides for Editor */
+.editor-dropdown .Select-control {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid #34495e !important;
+}
+
+.editor-dropdown .Select-placeholder,
+.editor-dropdown .Select-value-label {
+    color: #ecf0f1 !important;
 }

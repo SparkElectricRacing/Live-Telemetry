@@ -81,12 +81,9 @@ def register_layout_editor_callbacks(app):
 
     @app.callback(
         Output('custom-dashboard-view-container', 'children'),
-        Input('dashboard-tabs', 'value'),
-        State('layout-config-store', 'data')
+        Input('layout-config-store', 'data')
     )
-    def render_custom_dashboard_view(active_tab, layout_config):
-        if active_tab != 'tab-custom-view':
-            raise dash.exceptions.PreventUpdate
+    def render_custom_dashboard_view(layout_config):
         if not layout_config or 'rows' not in layout_config:
             return []
         rows = []
@@ -111,40 +108,58 @@ def register_layout_editor_callbacks(app):
     def render_layout_editor(layout_config):
         if not layout_config or 'rows' not in layout_config:
             return []
+        
+        # Header Section
         editor_header = html.Div([
-            html.H2("Layout Editor"),
-            html.Button("Export to settings.json", id="export-layout-btn", className="control-btn")
-        ], className="editor-header") # You may need to style 'editor-header' in your CSS
+            html.H2("Layout Editor", className="editor-title"),
+            html.Button("💾 Export to settings.json", id="export-layout-btn", className="control-btn export-btn")
+        ], className="editor-header")
 
         editor_rows = []
-        for row_data in layout_config['rows']:
+        for i, row_data in enumerate(layout_config['rows']):
             row_id = row_data['id']
             column_editors = []
+            
             for col_data in row_data['columns']:
                 col_id = col_data['id']
                 column_editors.append(html.Div([
-                    dcc.Dropdown(id={'type': 'variable-select', 'index': col_id},
-                                 options=[{'label': v, 'value': k} for k, v in AVAILABLE_VARIABLES.items()],
-                                 value=col_data['variable'], clearable=False),
-                    dcc.Dropdown(id={'type': 'chart-select', 'index': col_id},
-                                 options=[{'label': v, 'value': k} for k, v in AVAILABLE_CHARTS.items()],
-                                 value=col_data['chart'], clearable=False),
-                    html.Button("－", id={'type': 'remove-col-btn', 'index': col_id}, n_clicks=0)
-                ], className="editor-col")) # You may need to style 'editor-col'
-            
+                    html.Label("Column Settings", className="editor-col-label"),
+                    dcc.Dropdown(
+                        id={'type': 'variable-select', 'index': col_id},
+                        options=[{'label': v, 'value': k} for k, v in AVAILABLE_VARIABLES.items()],
+                        value=col_data['variable'], 
+                        clearable=False,
+                        className="editor-dropdown"
+                    ),
+                    dcc.Dropdown(
+                        id={'type': 'chart-select', 'index': col_id},
+                        options=[{'label': v, 'value': k} for k, v in AVAILABLE_CHARTS.items()],
+                        value=col_data['chart'], 
+                        clearable=False,
+                        className="editor-dropdown"
+                    ),
+                    html.Button("Remove Column", id={'type': 'remove-col-btn', 'index': col_id}, n_clicks=0, className="btn-remove-col")
+                ], className="editor-col-card"))
+
+            # Row Card
             editor_rows.append(html.Div([
-                html.H4(f"Row {len(editor_rows) + 1}"),
-                html.Div(column_editors, className="editor-row-content"), # Style 'editor-row-content'
                 html.Div([
-                    html.Button("＋ Add Column", id={'type': 'add-col-btn', 'index': row_id}, n_clicks=0),
-                    html.Button("× Remove Row", id={'type': 'remove-row-btn', 'index': row_id}, n_clicks=0, className="stop-btn")
-                ], className="editor-row-controls") # Style 'editor-row-controls'
-            ], className="editor-row")) # Style 'editor-row'
+                    html.H4(f"Row {i + 1}", className="row-title"),
+                    html.Div([
+                        html.Button("＋ Add Column", id={'type': 'add-col-btn', 'index': row_id}, n_clicks=0, className="btn-add-col"),
+                        html.Button("× Remove Row", id={'type': 'remove-row-btn', 'index': row_id}, n_clicks=0, className="btn-remove-row")
+                    ], className="row-controls-top")
+                ], className="row-header"),
+                
+                html.Div(column_editors, className="editor-columns-grid"),
+                
+            ], className="editor-row-card"))
         
-        add_row_button = html.Button("＋ Add Row", id={'type': 'add-row-btn', 'index': 'main'},
-                                     n_clicks=0, className="editor-add-row-btn") # Style 'editor-add-row-btn'
+        add_row_button = html.Div([
+            html.Button("＋ Add New Row", id={'type': 'add-row-btn', 'index': 'main'}, n_clicks=0, className="btn-add-row")
+        ], className="add-row-container")
         
-        return html.Div([editor_header] + editor_rows + [add_row_button])
+        return html.Div([editor_header] + editor_rows + [add_row_button], className="editor-container")
 
     @app.callback(
         Output("download-layout-json", "data"),

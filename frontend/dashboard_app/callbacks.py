@@ -356,3 +356,21 @@ def register_all_callbacks(app, telemetry_receiver):
         # Refresh the list and clear inputs
         files, playback_options, action_options = update_log_files_list(0, 0, 0)
         return files, playback_options, action_options, None, "", status_message
+
+    # --- NEW: Toggle View Visibility ---
+    @app.callback(
+        Output('static-dashboard-container', 'style'),
+        Output('custom-dashboard-view-container', 'style'),
+        Output('layout-editor-container', 'style'),
+        Input('dashboard-tabs', 'value')
+    )
+    def render_content(tab):
+        show = {'display': 'block'}
+        hide = {'display': 'none'}
+        if tab == 'tab-static':
+            return show, hide, hide
+        elif tab == 'tab-custom-view':
+            return hide, show, hide
+        elif tab == 'tab-editor':
+            return hide, hide, show
+        return show, hide, hide
