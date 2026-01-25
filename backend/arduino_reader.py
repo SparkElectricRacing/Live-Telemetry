@@ -7,8 +7,10 @@ import global_vars as gv
 # [2] Subidentifier (for devices that send more than one type of data per address, i.e. from BMS AUX (0x7D): 0x00 = low cell V, 0x01 = high cell V, etc.)
 # [3-6] timestamp, in ms from device enable
 # [7-14*] data, big-endian? (i need to double check the endianness but memcpy gives the correct result either way)
-# [15*] hardcoded sanity assert value (0x9a)
-# So 16 bytes / entry gives us a lot of wiggle room for the amt of data we send over
+# [15-18] GPS Longitude
+# [19-22] GPS Latitude
+# [23*] hardcoded sanity assert value (0x9a)
+# So 24 bytes / entry gives us a lot of wiggle room for the amt of data we send over
 def avg_temp(data):
     # static_cast<int>(frame->data[1])
     return ((data >> 8) & 0xFF)
@@ -87,7 +89,15 @@ CONVERSIONS = {
     "DTC1": dtc1,
     "raw_rpm": raw_rpm
 }
-
+# [0] hardcoded sanity assert value (0xbb)
+# [1-4] GPS Longitude
+# [5-8] GPS Latitude
+# [9] CAN device id
+# [10] Subidentifier (for devices that send more than one type of data per address, i.e. from BMS AUX (0x7D): 0x00 = low cell V, 0x01 = high cell V, etc.)
+# [11-14] timestamp, in ms from device enable
+# [15-22*] data, big-endian? (i need to double check the endianness but memcpy gives the correct result either way)
+# [23*] hardcoded sanity assert value (0x9a)
+# So 24 bytes / entry gives us a lot of wiggle room for the amt of data we send over
 def parse_in(inp):
     inp = int.from_bytes(inp, byteorder='big') # quicker
     # if type(inp) == bytes:
@@ -101,16 +111,18 @@ def parse_in(inp):
         timestamp = (inp >> 72) & 0xFFFFFFFF # 4 byte
         subId = (inp >> 104) & 0xFF
         canId = (inp >> 112) & 0xFF
-        hcSanValA = (inp >> 120) & 0xFF
+        gps_lat = (inp >> 120) & 0xFFFFFFFF # 4 byte
+        gps_long = (inp >> 152) & 0xFFFFFFFF # 4 byte
+        hcSanValA = (inp >> 184) & 0xFF
         signal_name = SIGNALS.get((canId, subId), "")
         try:
             result = CONVERSIONS[signal_name](data)
         except Exception as e:
             result = f"Decode error: {e}"
-        return hcSanValA, signal_name, timestamp, result, hcSanValB
+        return hcSanValA, signal_name, timestamp, result, gps_long, gps_lat, hcSanValB
     else: 
         print(type(inp))
-        return 0, "", 0, 0, 0
+        return 0, "", 0, 0, 0, 0, 0
 
 def read_from_arduino(port_name, baud_rate):
     ser = serial.Serial(port_name, baud_rate, timeout = 1)
@@ -119,16 +131,16 @@ def read_from_arduino(port_name, baud_rate):
         while True:
             while ser.in_waiting > 16:
                 line = ser.readline().decode('utf-8').rstrip()
-                hcSanValA, signal_name, timestamp, data, hcSanValB = parse_in(line)
+                hcSanValA, signal_name, timestamp, data, gps_long, gps_lat, hcSanValB = parse_in(line)
                 if signal_name == "raw_rpm":
                     rpmSpeed = rpm_speed(data)
-                    entry = [hcSanValA, "rpm_speed", timestamp, rpmSpeed, hcSanValB]
+                    entry = [hcSanValA, "rpm_speed", timestamp, rpmSpeed, gps_long, gps_lat, hcSanValB]
                     gv.buffer.put(entry)
                     speedMPH = mph_speed(rpmSpeed)
-                    entry = [hcSanValA, "speedMPH", timestamp, speedMPH, hcSanValB]
+                    entry = [hcSanValA, "speedMPH", timestamp, speedMPH, gps_long, gps_lat, hcSanValB]
                     gv.buffer.put(entry)
                 else:
-                    entry = [hcSanValA, signal_name, timestamp, data, hcSanValB]
+                    entry = [hcSanValA, signal_name, timestamp, data, gps_long, gps_lat, hcSanValB]
                     gv.buffer.put(entry)
             time.sleep(0.1)
     except KeyboardInterrupt:
