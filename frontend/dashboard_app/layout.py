@@ -104,105 +104,14 @@ def create_dashboard_layout():
             ], className="chart-container"),
         ], className="chart-row"),
         
-        # Log Management Section
-        html.Div([
-            html.H3("Log Management", className="section-title"),
-            html.Div([
-                html.Div([
-                    html.H4("Available Log Files"),
-                    html.Div(id="log-files-list"),
-                    # File Management Actions
-                    html.Div([
-                        html.H5("File Actions", className="file-actions-title"),
-                        
-                        # File Selection Section
-                        html.Div([
-                            html.Label("Select File:", className="file-action-label"),
-                            dcc.Dropdown(
-                                id="selected-file-for-action", 
-                                placeholder="Choose a file to delete or rename",
-                                className="file-selection-dropdown"
-                            )
-                        ], className="file-action-section"),
-                        
-                        # Delete Single File Section
-                        html.Div([
-                            html.Label("Delete Selected File:", className="file-action-label"),
-                            html.Div([
-                                html.Button("Delete Selected File", id="delete-file-btn", n_clicks=0, className="file-action-btn delete-btn", style={"width": "100%"})
-                            ], className="file-action-row")
-                        ], className="file-action-section"),
-                        
-                        # Rename File Section
-                        html.Div([
-                            html.Label("Rename Selected File:", className="file-action-label"),
-                            html.Div([
-                                dcc.Input(
-                                    id="new-name-input", 
-                                    type="text", 
-                                    placeholder="Enter new filename", 
-                                    className="file-input"
-                                ),
-                                html.Button("Rename", id="rename-file-btn", n_clicks=0, className="file-action-btn rename-btn")
-                            ], className="file-action-row")
-                        ], className="file-action-section"),
-                        
-                        # Delete All Section
-                        html.Div([
-                            html.Button("Delete All Files", id="delete-all-btn", n_clicks=0, className="file-action-btn delete-all-btn")
-                        ], className="file-action-section"),
-                        
-                        html.Div(id="file-operation-status", className="operation-status")
-                    ], className="file-management-actions")
-                ], className="log-list-container"),
-                html.Div([
-                    html.H4("Playback Controls"),
-                    
-                    # Playback Actions
-                    html.Div([
-                        html.H5("Playback Actions", className="playback-actions-title"),
-                        
-                        # Instructions
-                        html.Div([
-                            html.P("Select a log file and click Play to replay recorded telemetry data:",
-                                   className="playback-instruction")
-                        ], className="playback-instruction-section"),
-                        
-                        # File Selection Section
-                        html.Div([
-                            html.Label("Select Log File:", className="playback-action-label"),
-                            dcc.Dropdown(
-                                id="selected-log-file", 
-                                placeholder="Choose a log file for playback",
-                                className="playback-dropdown"
-                            )
-                        ], className="playback-action-section"),
-                        
-                        # Control Buttons Section
-                        html.Div([
-                            html.Label("Playback Controls:", className="playback-action-label"),
-                            html.Div([
-                                html.Button("Play", id="play-btn", n_clicks=0, className="playback-action-btn play-btn"),
-                                html.Button("Pause", id="pause-btn", n_clicks=0, className="playback-action-btn pause-btn"),
-                                html.Button("Stop", id="stop-playback-btn", n_clicks=0, className="playback-action-btn stop-btn"),
-                            ], className="playback-button-row")
-                        ], className="playback-action-section"),
-                        
-                        # Status Section
-                        html.Div([
-                            html.Div(id="playback-status", className="playback-status-display")
-                        ], className="playback-status-section")
-                    ], className="playback-management-actions")
-                ], className="playback-container")
-            ], className="log-management-row")
-        ], className="log-management-section"),
+                # Log Management Section - REMOVED (Moved to Control Panel)
 
         # Log File Summary Section
         html.Div([
             # Title and instruction on same line
             html.Div([
                 html.H3("Log File Analysis", className="section-title", style={"display": "inline-block", "margin-right": "20px", "margin-bottom": "0"}),
-                html.P("Click on a log file above to view detailed analysis and summary statistics",
+                html.P("Select a log file in the Control Panel to view detailed analysis and summary statistics",
                        className="summary-instruction", style={"display": "inline-block", "margin-bottom": "0"})
             ], style={"margin-bottom": "20px"}),
 
@@ -240,25 +149,120 @@ def create_dashboard_layout():
                 html.H3("Control Panel", className="control-panel-title"),
                 html.Div([
                     html.Div(id="connection-status", className="status-indicator"),
+                    
+                    # Data Source Selection
                     html.Div([
                         html.Label("Data Source:", className="control-label"),
                         dcc.Dropdown(
                             id="data-mode-selector",
                             options=[
                                 {"label": "Mock Data", "value": "mock"},
-                                {"label": "Live API", "value": "live"}
+                                {"label": "Live API", "value": "live"},
+                                {"label": "Log Playback", "value": "playback"}
                             ],
                             value="mock",
-                            className="data-mode-dropdown"
+                            className="data-mode-dropdown",
+                            clearable=False
                         )
                     ], className="mode-selector"),
+                    
+                    # Log File Selection (Visible only in Playback mode)
+                    html.Div([
+                        html.Label("Log File:", className="control-label"),
+                        dcc.Dropdown(
+                            id="control-panel-log-selector",
+                            placeholder="Select Log File...",
+                            className="log-selector-dropdown",
+                            style={'width': '100%'}
+                        )
+                    ], id="log-selector-container", className="mode-selector", style={'display': 'none'}),
+                    
+                    # Connection Actions
                     html.Div([
                         html.Button("Start", id="start-btn", n_clicks=0, className="control-btn start-btn"),
                         html.Button("Stop", id="stop-btn", n_clicks=0, className="control-btn stop-btn")
-                    ], className="control-buttons")
+                    ], className="control-buttons"),
+                    
+                    # Manager Button
+                    html.Div([
+                         html.Button("Manage Logs ▼", id="manage-logs-btn", n_clicks=0, className="control-btn", style={'marginTop': '10px', 'width': '100%', 'backgroundColor': '#34495e', 'color': 'white'})
+                    ], className="control-buttons", style={'justifyContent': 'center'}),
+                    
                 ], className="control-panel-content"),
-                html.Div(id="error-notification", className="error-notification hidden")
-            ], className="control-panel-box")
+                html.Div(id="error-notification", className="error-notification hidden"),
+
+                # --- Collapsible Log Management Dropdown ---
+                html.Div(id="log-management-dropdown", children=[
+                    html.Div([
+                        html.H4("Log Management", className="section-title", style={'marginBottom': '10px', 'fontSize': '1.2em'}),
+                        
+                        # File Management Actions
+                        html.Div([
+                            html.H5("File Actions", className="file-actions-title"),
+                            
+                            # File Selection Section
+                            html.Div([
+                                html.Label("Select File:", className="file-action-label"),
+                                dcc.Dropdown(
+                                    id="selected-file-for-action", 
+                                    placeholder="Select a file...",
+                                    className="file-selection-dropdown"
+                                )
+                            ], className="file-action-section"),
+                            
+                            # Actions
+                            html.Div([
+                                html.Button("Delete", id="delete-file-btn", n_clicks=0, className="file-action-btn delete-btn"),
+                                dcc.Input(id="new-name-input", type="text", placeholder="New Name", className="file-input", style={'width': '120px'}),
+                                html.Button("Rename", id="rename-file-btn", n_clicks=0, className="file-action-btn rename-btn"),
+                            ], className="file-action-row", style={'marginBottom': '10px'}),
+
+                            # Delete All
+                            html.Div([
+                                html.Button("Delete All Files", id="delete-all-btn", n_clicks=0, className="file-action-btn delete-all-btn")
+                            ], className="file-action-section"),
+                            
+                            html.Div(id="file-operation-status", className="operation-status")
+                        ], className="file-management-actions"),
+                        
+                        # Playback Controls (Full)
+                        html.Div([
+                            html.H5("Playback Controls", className="playback-actions-title"),
+                            # File Selection Section
+                            html.Div([
+                                html.Label("Select Playback File:", className="playback-action-label"),
+                                dcc.Dropdown(
+                                    id="selected-log-file", 
+                                    placeholder="Choose playback file...",
+                                    className="playback-dropdown"
+                                )
+                            ], className="playback-action-section"),
+                            
+                            # Control Buttons Section
+                            html.Div([
+                                html.Button("Play", id="play-btn", n_clicks=0, className="playback-action-btn play-btn"),
+                                html.Button("Pause", id="pause-btn", n_clicks=0, className="playback-action-btn pause-btn"),
+                                html.Button("Stop", id="stop-playback-btn", n_clicks=0, className="playback-action-btn stop-btn"),
+                            ], className="playback-button-row"),
+                            
+                            html.Div(id="playback-status", className="playback-status-display", style={'marginTop': '10px'})
+                        ], className="playback-management-actions")
+
+                    ], style={'maxHeight': '600px', 'overflowY': 'auto'})
+                ], style={
+                    'display': 'none', 
+                    'position': 'absolute', 
+                    'top': '100%', 
+                    'right': '0', 
+                    'width': '400px', 
+                    'backgroundColor': '#1e2329', 
+                    'border': '1px solid #ffd700', 
+                    'borderRadius': '10px', 
+                    'padding': '15px', 
+                    'zIndex': '1000',
+                    'boxShadow': '0 10px 30px rgba(0,0,0,0.5)'
+                })
+            ], className="control-panel-box", style={'position': 'relative'}), # Added relative positioning to parent
         ], className="top-row"),
         
         # --- NEW: Tabs to switch views ---

@@ -20,9 +20,11 @@ def register_all_callbacks(app, telemetry_receiver):
         Output('connection-status', 'children'),
         Input('start-btn', 'n_clicks'),
         Input('stop-btn', 'n_clicks'),
+        State('data-mode-selector', 'value'),
+        State('control-panel-log-selector', 'value'),
         prevent_initial_call=True
     )
-    def handle_start_stop_collection(start_clicks, stop_clicks):
+    def handle_start_stop_collection(start_clicks, stop_clicks, mode, selected_log):
         ctx = dash.callback_context
         if not ctx.triggered:
             return dash.no_update
@@ -30,17 +32,40 @@ def register_all_callbacks(app, telemetry_receiver):
         button_id = ctx.triggered[0]['prop_id'].split('.')[0]
         
         if button_id == 'start-btn':
-            logging.info("Start Collection clicked")
-            if not telemetry_receiver.running:
-                telemetry_receiver.start()
-                logging.info("Telemetry collection started")
-            return "Collecting Data"
+            logging.info(f"Start clicked in mode: {mode}")
+            
+            if mode == 'playback':
+                if not selected_log:
+                    return "Select File"
+                
+                # Check if we are resuming or starting new
+                if telemetry_receiver.playback_mode and telemetry_receiver.playback_paused and telemetry_receiver.playback_file == selected_log:
+                     telemetry_receiver.resume_playback()
+                     return "Playing"
+                
+                success = telemetry_receiver.start_playback(selected_log)
+                if success:
+                    return "Playing"
+                else:
+                    return "Error"
+            
+            else:
+                # Live or Mock
+                if not telemetry_receiver.running:
+                    telemetry_receiver.start()
+                    logging.info("Telemetry collection started")
+                return "Collecting Data"
             
         elif button_id == 'stop-btn':
-            logging.info("Stop Collection clicked")
-            telemetry_receiver.stop()
-            logging.info("elemetry collection stopped")
-            return "Stopped"
+            logging.info("Stop clicked")
+            
+            if mode == 'playback':
+                telemetry_receiver.stop_playback()
+                return "Stopped"
+            else:
+                telemetry_receiver.stop()
+                logging.info("Telemetry collection stopped")
+                return "Stopped"
             
     # update the stored telemetry data
     @app.callback(
@@ -148,12 +173,19 @@ def register_all_callbacks(app, telemetry_receiver):
     def handle_mode_selection(selected_mode):
         if selected_mode == "mock":
             telemetry_receiver.mock_mode = True
+            telemetry_receiver.playback_mode = False
             telemetry_receiver.api_available = False
             logging.info("Switched to Mock Data mode")
         elif selected_mode == "live":
             telemetry_receiver.mock_mode = False
+            telemetry_receiver.playback_mode = False
             telemetry_receiver.test_api_connection()  # Test API availability
             logging.info("Switched to Live API mode")
+        elif selected_mode == "playback":
+            telemetry_receiver.mock_mode = False
+            telemetry_receiver.playback_mode = True
+            telemetry_receiver.api_available = False
+            logging.info("Switched to Playback mode")
 
         return selected_mode
 
@@ -167,111 +199,45 @@ def register_all_callbacks(app, telemetry_receiver):
             return "⚠️ API not available, using mock data", "error-notification warning"
         return "", "error-notification hidden"
 
-    # playback callbacks 
-    @app.callback(
-        Output('playback-status', 'children'),
-        Output('play-btn', 'disabled'),
-        Output('pause-btn', 'disabled'),
-        Output('stop-playback-btn', 'disabled'),
-        Input('play-btn', 'n_clicks'),
-        Input('pause-btn', 'n_clicks'),
-        Input('stop-playback-btn', 'n_clicks'),
-        Input('interval-component', 'n_intervals'),
-        State('selected-log-file', 'value'),
-        prevent_initial_call=True
-    )
-    def handle_playback_controls(play_clicks, pause_clicks, stop_clicks, n_intervals, selected_file):
-        try:
-            ctx = dash.callback_context
-            
-            if ctx.triggered:
-                button_id = ctx.triggered[0]['prop_id'].split('.')[0]
-                
-                if button_id == 'play-btn' and selected_file:
-                    logging.info(f"Play button clicked with file: {selected_file}")
-                    if telemetry_receiver.playback_mode and telemetry_receiver.playback_paused:
-                        telemetry_receiver.resume_playback()
-                        logging.info("Resumed playback")
-                    else:
-                        logging.info(f"Starting playback of: {selected_file}")
-                        success = telemetry_receiver.start_playback(selected_file)
-                        if not success:
-                            logging.error(f"Failed to start playback of: {selected_file}")
-                            return "Error loading log file", False, True, True
-                    
-                elif button_id == 'pause-btn':
-                    logging.info("Pause button clicked")
-                    telemetry_receiver.pause_playback()
-                    
-                elif button_id == 'stop-playback-btn':
-                    logging.info("Stop playback button clicked")
-                    telemetry_receiver.stop_playback()
-            
-            # Update status and button states based on current playback state
-            if telemetry_receiver.playback_mode:
-                if telemetry_receiver.playback_paused:
-                    status = f" Paused at {telemetry_receiver.playback_index}/{len(telemetry_receiver.playback_data)}"
-                    return status, False, False, False  # play enabled, pause enabled, stop enabled
-                elif telemetry_receiver.playback_index >= len(telemetry_receiver.playback_data):
-                    status = " Playback Complete"
-                    return status, False, True, False  # play enabled, pause disabled, stop enabled
-                else:
-                    status = f" Playing {telemetry_receiver.playback_index}/{len(telemetry_receiver.playback_data)}"
-                    return status, True, False, False  # play disabled, pause enabled, stop enabled
-            else:
-                if selected_file:
-                    status = " Ready to play"
-                    return status, False, True, True  # play enabled, pause disabled, stop disabled
-                else:
-                    status = "Select a log file to begin playback"
-                    return status, True, True, True  # all disabled
-                    
-        except Exception as e:
-            logging.error(f"Error in playback controls: {e}")
-            return f"Error: {str(e)}", False, True, True
+
 
     # File management callbacks
     @app.callback(
-        Output('log-files-list', 'children'),
         Output('selected-log-file', 'options'),
         Output('selected-file-for-action', 'options'),
+        Output('control-panel-log-selector', 'options'),
         Input('page-load-trigger', 'data'),
         Input('start-btn', 'n_clicks'),
-        Input('stop-btn', 'n_clicks')
+        Input('stop-btn', 'n_clicks'),
+        Input('delete-file-btn', 'n_clicks'),
+        Input('rename-file-btn', 'n_clicks'),
+        Input('delete-all-btn', 'n_clicks')
     )
-    def update_log_files_list(page_load, start_clicks, stop_clicks):
+    def update_log_files_list(page_load, start_clicks, stop_clicks, del_clicks, ren_clicks, del_all_clicks):
         try:
             log_files = []
-            for filename in os.listdir(LOG_DIRECTORY):
-                if filename.endswith('.log'):
-                    filepath = os.path.join(LOG_DIRECTORY, filename)
-                    file_size = os.path.getsize(filepath) / 1024  # KB
-                    file_time = datetime.fromtimestamp(os.path.getmtime(filepath))
-                    
-                    log_files.append({
-                        'filename': filename,
-                        'filepath': filepath,
-                        'size_kb': file_size,
-                        'modified': file_time
-                    })
+            if os.path.exists(LOG_DIRECTORY):
+                for filename in os.listdir(LOG_DIRECTORY):
+                    if filename.endswith('.log'):
+                        filepath = os.path.join(LOG_DIRECTORY, filename)
+                        file_size = os.path.getsize(filepath) / 1024  # KB
+                        file_time = datetime.fromtimestamp(os.path.getmtime(filepath))
+                        
+                        log_files.append({
+                            'filename': filename,
+                            'filepath': filepath,
+                            'size_kb': file_size,
+                            'modified': file_time
+                        })
             
             # Sort by modification time, newest first
             log_files.sort(key=lambda x: x['modified'], reverse=True)
             
             # Create display elements
-            file_elements = []
             playback_dropdown_options = []
             file_action_dropdown_options = []
             
             for log_file in log_files:
-                file_elements.append(
-                    html.Div([
-                        html.Span(log_file['filename'], className="log-filename"),
-                        html.Span(f"{log_file['size_kb']:.1f} KB", className="log-size"),
-                        html.Span(log_file['modified'].strftime("%Y-%m-%d %H:%M"), className="log-time")
-                    ], className="log-file-item clickable-log-file", id={'type': 'log-file-item', 'index': log_file['filepath']})
-                )
-                
                 # Options for playback dropdown (needs full filepath)
                 playback_dropdown_options.append({
                     'label': f"{log_file['filename']} - {log_file['size_kb']:.1f}KB - {log_file['modified'].strftime('%m/%d %H:%M')}",
@@ -284,16 +250,42 @@ def register_all_callbacks(app, telemetry_receiver):
                     'value': log_file['filename']
                 })
             
-            return file_elements, playback_dropdown_options, file_action_dropdown_options
+            return playback_dropdown_options, file_action_dropdown_options, playback_dropdown_options
             
         except Exception as e:
-            return [html.Div(f"Error loading log files: {e}")], [], []
+            logging.error(f"Error loading log files: {e}")
+            return [], [], []
+
+    # Toggle Log Management Dropdown
+    @app.callback(
+        Output('log-management-dropdown', 'style'),
+        Input('manage-logs-btn', 'n_clicks'),
+        State('log-management-dropdown', 'style')
+    )
+    def toggle_log_dropdown(n_clicks, current_style):
+        if n_clicks and n_clicks > 0:
+            if current_style.get('display') == 'none':
+                new_style = current_style.copy()
+                new_style['display'] = 'block'
+                return new_style
+            else:
+                new_style = current_style.copy()
+                new_style['display'] = 'none'
+                return new_style
+        return current_style
+
+    # Toggle Log Selector Visibility (Keep this for the simple mode too)
+    @app.callback(
+        Output('log-selector-container', 'style'),
+        Input('data-mode-selector', 'value')
+    )
+    def toggle_log_selector(mode):
+        if mode == 'playback':
+            return {'display': 'block'}
+        return {'display': 'none'}
 
     # log file operations 
     @app.callback(
-        Output('log-files-list', 'children', allow_duplicate=True),
-        Output('selected-log-file', 'options', allow_duplicate=True),
-        Output('selected-file-for-action', 'options', allow_duplicate=True),
         Output('selected-file-for-action', 'value'),
         Output('new-name-input', 'value'),
         Output('file-operation-status', 'children'),
@@ -366,9 +358,8 @@ def register_all_callbacks(app, telemetry_receiver):
             logging.error(f"Error during file operation: {e}")
             status_message = f"❌ Error: {str(e)}"
         
-        # Refresh the list and clear inputs
-        files, playback_options, action_options = update_log_files_list(0, 0, 0)
-        return files, playback_options, action_options, None, "", status_message
+        # Note: The list is refreshed by the other callback which listens to these buttons
+        return None, "", status_message
 
     # --- NEW: Toggle View Visibility ---
     @app.callback(
