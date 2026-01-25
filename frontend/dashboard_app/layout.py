@@ -106,23 +106,7 @@ def create_dashboard_layout():
         
                 # Log Management Section - REMOVED (Moved to Control Panel)
 
-        # Log File Summary Section
-        html.Div([
-            # Title and instruction on same line
-            html.Div([
-                html.H3("Log File Analysis", className="section-title", style={"display": "inline-block", "margin-right": "20px", "margin-bottom": "0"}),
-                html.P("Select a log file in the Control Panel to view detailed analysis and summary statistics",
-                       className="summary-instruction", style={"display": "inline-block", "margin-bottom": "0"})
-            ], style={"margin-bottom": "20px"}),
-
-            # Summary Statistics Cards
-            html.Div(id="summary-stats-container", className="summary-stats-container"),
-
-            # Summary Plots
-            html.Div([
-                dcc.Graph(id="summary-timeseries-plot")
-            ], className="chart-container-full", id="summary-plot-container")
-        ], className="log-summary-section", id="log-summary-section"),
+                # Log Management Section - REMOVED (Moved to Control Panel)
     ], className="dashboard-content")
     
     
@@ -245,6 +229,7 @@ def create_dashboard_layout():
                                     value=0,
                                     marks=None, # Too cluttered for large files
                                     tooltip={"placement": "bottom", "always_visible": True},
+                                    updatemode='drag',
                                     disabled=True
                                 )
                             ], style={'marginTop': '20px', 'padding': '0 10px'}),

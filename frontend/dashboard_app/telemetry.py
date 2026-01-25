@@ -342,6 +342,13 @@ class TelemetryReceiver:
         if self.playback_mode and 0 <= index < len(self.playback_data):
             self.playback_index = index
             logging.info(f"Seeked to index: {index}")
+            
+            # Use same logic as step_playback: update UI immediately if paused
+            if self.playback_paused:
+                # Manually inject the data point so UI updates immediately even if paused
+                data = self.playback_data[self.playback_index]
+                self.data_queue.put(data)
+            
             return True
         return False
 
