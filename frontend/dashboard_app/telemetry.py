@@ -336,3 +336,33 @@ class TelemetryReceiver:
             logging.info("Playback ended - stopping data collection")
             self.stop()
             return
+
+    def seek_playback(self, index: int):
+        """Seek to a specific index in the playback data"""
+        if self.playback_mode and 0 <= index < len(self.playback_data):
+            self.playback_index = index
+            logging.info(f"Seeked to index: {index}")
+            return True
+        return False
+
+    def step_playback(self, steps=1):
+        """Step forward or backward by a number of events"""
+        if self.playback_mode:
+            new_index = self.playback_index + steps
+            if 0 <= new_index < len(self.playback_data):
+                self.playback_index = new_index
+                logging.info(f"Stepped to index: {new_index}")
+                
+                # If step is negative (backwards), we might need to clear the queue/store 
+                # or just let the next update cycle handle it. 
+                # For immediate feedback, we can put the new point on queue? 
+                # Actually, the main thread loop will pick it up if paused? 
+                # If paused, the loop doesn't put data on queue.
+                
+                if self.playback_paused:
+                    # Manually inject the data point so UI updates immediately even if paused
+                    data = self.playback_data[self.playback_index]
+                    self.data_queue.put(data)
+                
+                return True
+        return False

@@ -20,11 +20,9 @@ def register_all_callbacks(app, telemetry_receiver):
         Output('connection-status', 'children'),
         Input('start-btn', 'n_clicks'),
         Input('stop-btn', 'n_clicks'),
-        State('data-mode-selector', 'value'),
-        State('control-panel-log-selector', 'value'),
         prevent_initial_call=True
     )
-    def handle_start_stop_collection(start_clicks, stop_clicks, mode, selected_log):
+    def handle_start_stop_collection(start_clicks, stop_clicks):
         ctx = dash.callback_context
         if not ctx.triggered:
             return dash.no_update
@@ -32,40 +30,22 @@ def register_all_callbacks(app, telemetry_receiver):
         button_id = ctx.triggered[0]['prop_id'].split('.')[0]
         
         if button_id == 'start-btn':
-            logging.info(f"Start clicked in mode: {mode}")
-            
-            if mode == 'playback':
-                if not selected_log:
-                    return "Select File"
+            logging.info("Start Collection clicked")
+            # If we are in playback mode, stop it first
+            if telemetry_receiver.playback_mode:
+                telemetry_receiver.stop_playback()
+                telemetry_receiver.playback_mode = False
                 
-                # Check if we are resuming or starting new
-                if telemetry_receiver.playback_mode and telemetry_receiver.playback_paused and telemetry_receiver.playback_file == selected_log:
-                     telemetry_receiver.resume_playback()
-                     return "Playing"
-                
-                success = telemetry_receiver.start_playback(selected_log)
-                if success:
-                    return "Playing"
-                else:
-                    return "Error"
-            
-            else:
-                # Live or Mock
-                if not telemetry_receiver.running:
-                    telemetry_receiver.start()
-                    logging.info("Telemetry collection started")
-                return "Collecting Data"
+            if not telemetry_receiver.running:
+                telemetry_receiver.start()
+                logging.info("Telemetry collection started")
+            return "Collecting Data"
             
         elif button_id == 'stop-btn':
-            logging.info("Stop clicked")
-            
-            if mode == 'playback':
-                telemetry_receiver.stop_playback()
-                return "Stopped"
-            else:
-                telemetry_receiver.stop()
-                logging.info("Telemetry collection stopped")
-                return "Stopped"
+            logging.info("Stop Collection clicked")
+            telemetry_receiver.stop()
+            logging.info("Telemetry collection stopped")
+            return "Stopped"
             
     # update the stored telemetry data
     @app.callback(
@@ -181,11 +161,6 @@ def register_all_callbacks(app, telemetry_receiver):
             telemetry_receiver.playback_mode = False
             telemetry_receiver.test_api_connection()  # Test API availability
             logging.info("Switched to Live API mode")
-        elif selected_mode == "playback":
-            telemetry_receiver.mock_mode = False
-            telemetry_receiver.playback_mode = True
-            telemetry_receiver.api_available = False
-            logging.info("Switched to Playback mode")
 
         return selected_mode
 
@@ -199,13 +174,103 @@ def register_all_callbacks(app, telemetry_receiver):
             return "⚠️ API not available, using mock data", "error-notification warning"
         return "", "error-notification hidden"
 
+    # playback callbacks 
+    @app.callback(
+        Output('playback-status', 'children'),
+        Output('play-btn', 'disabled'),
+        Output('pause-btn', 'disabled'),
+        Output('stop-playback-btn', 'disabled'),
+        Output('prev-step-btn', 'disabled'),
+        Output('next-step-btn', 'disabled'),
+        Output('playback-slider', 'max'),
+        Output('playback-slider', 'value'),
+        Output('playback-slider', 'disabled'),
+        Input('play-btn', 'n_clicks'),
+        Input('pause-btn', 'n_clicks'),
+        Input('stop-playback-btn', 'n_clicks'),
+        Input('prev-step-btn', 'n_clicks'),
+        Input('next-step-btn', 'n_clicks'),
+        Input('playback-slider', 'value'), # Slider input
+        Input('interval-component', 'n_intervals'),
+        State('selected-log-file', 'value'),
+        prevent_initial_call=True
+    )
+    def handle_playback_controls(play_clicks, pause_clicks, stop_clicks, prev_clicks, next_clicks, slider_value, n_intervals, selected_file):
+        try:
+            ctx = dash.callback_context
+            triggered_id = ctx.triggered[0]['prop_id'].split('.')[0] if ctx.triggered else None
+            
+            # Default Return States
+            # Status, PlayDis, PauseDis, StopDis, PrevDis, NextDis, Max, Value, SliderDis
+            
+            if triggered_id == 'play-btn' and selected_file:
+                 logging.info(f"Play button clicked with file: {selected_file}")
+                 telemetry_receiver.mock_mode = False
+                 
+                 if telemetry_receiver.playback_mode and telemetry_receiver.playback_paused and telemetry_receiver.playback_file == selected_file:
+                      telemetry_receiver.resume_playback()
+                 else:
+                      telemetry_receiver.start_playback(selected_file)
+            
+            elif triggered_id == 'pause-btn':
+                 telemetry_receiver.pause_playback()
+            
+            elif triggered_id == 'stop-playback-btn':
+                 telemetry_receiver.stop_playback()
+                 
+            elif triggered_id == 'prev-step-btn':
+                 telemetry_receiver.step_playback(-1)
+                 # If stepping while playing, maybe pause? Or just step back?
+                 # Usually stepping implies pausing first, but we can do on the fly
+                 if not telemetry_receiver.playback_paused:
+                      telemetry_receiver.pause_playback()
+            
+            elif triggered_id == 'next-step-btn':
+                 telemetry_receiver.step_playback(1)
+                 if not telemetry_receiver.playback_paused:
+                      telemetry_receiver.pause_playback()
+                      
+            elif triggered_id == 'playback-slider':
+                 # Seek if slider changed and we are in playback mode
+                 if telemetry_receiver.playback_mode:
+                      # Differentiate between user drag and automatic update?
+                      # Dash fires this even on dynamic update unless we filter.
+                      # Ideally we check if value differs significantly from playback_index
+                      if abs(slider_value - telemetry_receiver.playback_index) > 1:
+                           telemetry_receiver.seek_playback(slider_value)
+                           # Pause on seek for better UX?
+                           # telemetry_receiver.pause_playback()
+
+            # --- Update UI State ---
+            if telemetry_receiver.playback_mode:
+                max_val = len(telemetry_receiver.playback_data) - 1
+                curr_val = telemetry_receiver.playback_index
+                
+                status = f" {curr_val}/{max_val + 1} events"
+                if telemetry_receiver.playback_paused:
+                    status = "Paused: " + status
+                     # Play: En, Pause: Dis, Stop: En, Prev: En, Next: En, Slider: En
+                    return status, False, True, False, False, False, max_val, curr_val, False
+                else:
+                    status = "Playing: " + status
+                    # Play: Dis, Pause: En, Stop: En, Prev: En, Next: En, Slider: En (but acts as display)
+                    return status, True, False, False, False, False, max_val, curr_val, False
+            else:
+                # Not in playback mode
+                status = "Ready" if selected_file else "Select File"
+                # All playback specific controls disabled except Play (if file selected)
+                play_enabled = not bool(selected_file)
+                return status, play_enabled, True, True, True, True, 100, 0, True
+
+        except Exception as e:
+            logging.error(f"Error in playback controls: {e}")
+            return f"Error: {str(e)}", False, True, True, True, True, 100, 0, True
 
 
-    # File management callbacks
+
     @app.callback(
         Output('selected-log-file', 'options'),
         Output('selected-file-for-action', 'options'),
-        Output('control-panel-log-selector', 'options'),
         Input('page-load-trigger', 'data'),
         Input('start-btn', 'n_clicks'),
         Input('stop-btn', 'n_clicks'),
@@ -250,11 +315,11 @@ def register_all_callbacks(app, telemetry_receiver):
                     'value': log_file['filename']
                 })
             
-            return playback_dropdown_options, file_action_dropdown_options, playback_dropdown_options
+            return playback_dropdown_options, file_action_dropdown_options
             
         except Exception as e:
             logging.error(f"Error loading log files: {e}")
-            return [], [], []
+            return [], []
 
     # Toggle Log Management Dropdown
     @app.callback(
@@ -273,16 +338,6 @@ def register_all_callbacks(app, telemetry_receiver):
                 new_style['display'] = 'none'
                 return new_style
         return current_style
-
-    # Toggle Log Selector Visibility (Keep this for the simple mode too)
-    @app.callback(
-        Output('log-selector-container', 'style'),
-        Input('data-mode-selector', 'value')
-    )
-    def toggle_log_selector(mode):
-        if mode == 'playback':
-            return {'display': 'block'}
-        return {'display': 'none'}
 
     # log file operations 
     @app.callback(

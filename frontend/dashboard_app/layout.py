@@ -157,25 +157,13 @@ def create_dashboard_layout():
                             id="data-mode-selector",
                             options=[
                                 {"label": "Mock Data", "value": "mock"},
-                                {"label": "Live API", "value": "live"},
-                                {"label": "Log Playback", "value": "playback"}
+                                {"label": "Live API", "value": "live"}
                             ],
                             value="mock",
                             className="data-mode-dropdown",
                             clearable=False
                         )
                     ], className="mode-selector"),
-                    
-                    # Log File Selection (Visible only in Playback mode)
-                    html.Div([
-                        html.Label("Log File:", className="control-label"),
-                        dcc.Dropdown(
-                            id="control-panel-log-selector",
-                            placeholder="Select Log File...",
-                            className="log-selector-dropdown",
-                            style={'width': '100%'}
-                        )
-                    ], id="log-selector-container", className="mode-selector", style={'display': 'none'}),
                     
                     # Connection Actions
                     html.Div([
@@ -240,10 +228,26 @@ def create_dashboard_layout():
                             
                             # Control Buttons Section
                             html.Div([
+                                html.Button("⏮", id="prev-step-btn", n_clicks=0, className="playback-action-btn control-btn small", title="Previous Frame", disabled=True),
                                 html.Button("Play", id="play-btn", n_clicks=0, className="playback-action-btn play-btn"),
                                 html.Button("Pause", id="pause-btn", n_clicks=0, className="playback-action-btn pause-btn"),
                                 html.Button("Stop", id="stop-playback-btn", n_clicks=0, className="playback-action-btn stop-btn"),
+                                html.Button("⏭", id="next-step-btn", n_clicks=0, className="playback-action-btn control-btn small", title="Next Frame", disabled=True),
                             ], className="playback-button-row"),
+                            
+                            # Scrubber Slider
+                            html.Div([
+                                dcc.Slider(
+                                    id='playback-slider',
+                                    min=0,
+                                    max=100, # Will be updated dynamically
+                                    step=1,
+                                    value=0,
+                                    marks=None, # Too cluttered for large files
+                                    tooltip={"placement": "bottom", "always_visible": True},
+                                    disabled=True
+                                )
+                            ], style={'marginTop': '20px', 'padding': '0 10px'}),
                             
                             html.Div(id="playback-status", className="playback-status-display", style={'marginTop': '10px'})
                         ], className="playback-management-actions")
