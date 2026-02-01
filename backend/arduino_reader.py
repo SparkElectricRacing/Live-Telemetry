@@ -1,5 +1,6 @@
 import serial # pyserial
 import time
+import os
 import global_vars as gv
 
 def avg_temp(data):
@@ -116,30 +117,63 @@ def parse_in(inp):
         return 0, "", 0, 0, 0, 0, 0
 
 def read_from_arduino(port_name, baud_rate):
-    ser = serial.Serial(port_name, baud_rate, timeout = 1)
-    time.sleep(2)
-    try:
-        while True:
-            while ser.in_waiting > 16:
-                line = ser.readline().decode('utf-8').rstrip()
-                hcSanValA, signal_name, timestamp, data, gps_long, gps_lat, hcSanValB = parse_in(line)
-                if signal_name == "raw_rpm":
-                    rpmSpeed = rpm_speed(data)
-                    entry = [hcSanValA, "rpm_speed", timestamp, rpmSpeed, gps_long, gps_lat, hcSanValB]
-                    gv.buffer.put(entry)
-                    speedMPH = mph_speed(rpmSpeed)
-                    entry = [hcSanValA, "speedMPH", timestamp, speedMPH, gps_long, gps_lat, hcSanValB]
-                    gv.buffer.put(entry)
-                else:
-                    entry = [hcSanValA, signal_name, timestamp, data, gps_long, gps_lat, hcSanValB]
-                    gv.buffer.put(entry)
-            time.sleep(0.1)
-    except KeyboardInterrupt:
-        print("Exiting...")
-        ser.close()
+    if(port_name == "not_a_port"): #for tester file's
+        script_dir = os.path.dirname(__file__)
+        file_path = os.path.join(script_dir, "test_can_data.bin")
+        with open(file_path, "rb") as test_data:
+            try:
+                while True:
+                    #reads one packet (24 bytes)
+                    line = test_data.read(24)
+                    #checks end of file and loops to start
+                    if len(line) < 24:
+                        print("Looping...")
+                        test_data.seek(0)
+                        time.sleep(1)
+                        continue
+                        
+                    #handles data
+                    hcSanValA, signal_name, timestamp, data, gps_long, gps_lat, hcSanValB = parse_in(line)
+                    if signal_name == "raw_rpm":
+                        rpmSpeed = rpm_speed(data)
+                        entry = [hcSanValA, "rpm_speed", timestamp, rpmSpeed, gps_long, gps_lat, hcSanValB]
+                        gv.buffer.put(entry)
+                        speedMPH = mph_speed(rpmSpeed)
+                        entry = [hcSanValA, "speedMPH", timestamp, speedMPH, gps_long, gps_lat, hcSanValB]
+                        gv.buffer.put(entry)
+                    else:
+                        entry = [hcSanValA, signal_name, timestamp, data, gps_long, gps_lat, hcSanValB]
+                        gv.buffer.put(entry)
+                    #1 second delay
+                    time.sleep(.1)
+            except KeyboardInterrupt:
+                print("Exiting...")
+    else: #real arduino input
+        ser = serial.Serial(port_name, baud_rate, timeout = 1)
+        time.sleep(2)
+        try:
+            while True:
+                while ser.in_waiting > 16:
+                    line = ser.readline().decode('utf-8').rstrip()
+                    hcSanValA, signal_name, timestamp, data, gps_long, gps_lat, hcSanValB = parse_in(line)
+                    if signal_name == "raw_rpm":
+                        rpmSpeed = rpm_speed(data)
+                        entry = [hcSanValA, "rpm_speed", timestamp, rpmSpeed, gps_long, gps_lat, hcSanValB]
+                        gv.buffer.put(entry)
+                        speedMPH = mph_speed(rpmSpeed)
+                        entry = [hcSanValA, "speedMPH", timestamp, speedMPH, gps_long, gps_lat, hcSanValB]
+                        gv.buffer.put(entry)
+                    else:
+                        entry = [hcSanValA, signal_name, timestamp, data, gps_long, gps_lat, hcSanValB]
+                        gv.buffer.put(entry)
+                time.sleep(0.1)
+        except KeyboardInterrupt:
+            print("Exiting...")
+            ser.close()
 
 
-port_name = "/dev/ttyUSB0"
+## port_name = "/dev/ttyUSB0" 
+port_name = "not_a_port" ## FOR TESTING WITH FILES REMOVE FOR REAL ARDUINO
 baud_rate = 115200
 if __name__ == "__main__":
     while True:
