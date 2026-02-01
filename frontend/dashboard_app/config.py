@@ -41,6 +41,17 @@ CHART_COLORS = {
 }
 
 # Gauge Configurations
+RPM_GAUGE_CONFIG = {
+    'range': [0, 8000],
+    'bar_color': "#00274C",
+    'steps': [
+        {'range': [0, 6000], 'color': "lightgray"},
+        {'range': [6000, 8000], 'color': "#e74c3c"}
+    ],
+    'threshold': {'line': {'color': "red", 'width': 4}, 'thickness': 0.75, 'value': 7000}
+}
+
+
 SPEED_GAUGE_CONFIG = {
     'range': [None, 150],
     'bar_color': "#00274C",

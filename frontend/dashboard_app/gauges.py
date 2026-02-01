@@ -11,8 +11,38 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config import (
     CHART_HEIGHT, CHART_MARGIN, CHART_FONT_SIZE, CHART_FONT,
-    SPEED_GAUGE_CONFIG, VOLTAGE_GAUGE_CONFIG, SOC_GAUGE_CONFIG
+    SPEED_GAUGE_CONFIG, VOLTAGE_GAUGE_CONFIG, SOC_GAUGE_CONFIG, RPM_GAUGE_CONFIG
 )
+
+
+def create_rpm_gauge(data: Dict[str, Any]) -> go.Figure:
+    """Create RPM gauge chart"""
+    current_rpm = abs(data['rpm_speed'][-1]) if data['rpm_speed'] else 0
+    previous_rpm = abs(data['rpm_speed'][-2]) if len(data['rpm_speed']) > 1 else current_rpm
+    
+    fig = go.Figure(go.Indicator(
+        mode="gauge+number+delta",
+        value=current_rpm,
+        domain={'x': [0, 1], 'y': [0, 1]},
+        title={'text': "Motor RPM"},
+        delta={'reference': previous_rpm},
+        gauge={
+            'axis': {'range': RPM_GAUGE_CONFIG['range']},
+            'bar': {'color': RPM_GAUGE_CONFIG['bar_color']},
+            'steps': RPM_GAUGE_CONFIG['steps'],
+            'threshold': RPM_GAUGE_CONFIG['threshold']
+        }
+    ))
+    
+    fig.update_layout(
+        height=CHART_HEIGHT,
+        margin=CHART_MARGIN,
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)',
+        font=dict(color='#e8e8e8', size=CHART_FONT_SIZE, family=CHART_FONT)
+    )
+    
+    return fig
 
 
 def create_speed_gauge(data: Dict[str, Any]) -> go.Figure:

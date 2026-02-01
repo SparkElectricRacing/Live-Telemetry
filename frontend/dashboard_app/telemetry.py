@@ -34,6 +34,7 @@ class TelemetryReceiver:
         # Playback functionality
         self.playback_mode = False
         self.playback_data = []
+        self.playback_speed = 'slow' # Default to slow
         self.playback_index = 0
         self.playback_paused = False
         self.playback_file = None
@@ -131,12 +132,19 @@ class TelemetryReceiver:
                     if not self.playback_paused and self.playback_index < len(self.playback_data):
                         data = self.playback_data[self.playback_index]
                         self.playback_index += 1
-                        # Downsample: only send every 10th data point for smoother playback
-                        if self.playback_index % 10 == 0:
-                            logging.info(f"▶️ Playback: {self.playback_index}/{len(self.playback_data)} - Speed: {data['speedMPH']:.1f} mph")
-                            time.sleep(0.005)  # 5ms between displayed points
+                        
+                        # Use playback_speed to determine sleep time
+                        if self.playback_speed == 'fast':
+                             # Less sleep, might still need downsampling if HUGE file
+                             sleep_time = 0.005 # 5ms
+                             # Optionally skip frames?
                         else:
-                            data = None  # Skip this data point  
+                             # 'slow' mode: roughly 10Hz
+                             sleep_time = 0.1 # 100ms
+                        
+                        logging.info(f"▶️ Playback: {self.playback_index}/{len(self.playback_data)} - Speed: {data.get('speedMPH', 0):.1f} mph")
+                        time.sleep(sleep_time)
+
                     elif self.playback_index >= len(self.playback_data):
                         # Playback finished - restore normal mode
                         logging.info(" Playback finished, restoring normal mode")
@@ -187,7 +195,11 @@ class TelemetryReceiver:
             'high_cell_voltage': random.uniform(3.6, 4.2),  # High cell voltage in V
             'max_cell_temp': random.uniform(30, 50),  # Max cell temperature in °C
             'is_charging': random.choice([True, False]),  # Charging status
-            'DTC1': 0  # Diagnostic trouble code (0 = no errors)
+            'is_charging': random.choice([True, False]),  # Charging status
+            'DTC1': 0,  # Diagnostic trouble code (0 = no errors)
+            # GPS Data (simulating Barber Motorsports Park)
+            'gps_lat': 33.53250 + random.uniform(-0.0005, 0.0005),
+            'gps_lon': -86.61889 + random.uniform(-0.0005, 0.0005)
         }
     
     def fetch_api_data(self) -> Optional[Dict[str, Any]]:
@@ -200,13 +212,41 @@ class TelemetryReceiver:
                 # Extract the latest value from each signal
                 data = {'timestamp': datetime.now().isoformat()}
 
+                gps_found = False
                 for signal_name, signal_data in signals.items():
-                    if signal_data.get('Data'):  # Check if there's any data
-                        # Get the most recent data point (last in the list)
-                        data[signal_name] = signal_data['Data'][-1]
+                    # Parse Data
+                    if signal_data.get('Data') is not None:
+                        # Existing code assumed list, so we stick to it.
+                        # If Data is [val, val...], take last.
+                        if isinstance(signal_data['Data'], list) and signal_data['Data']:
+                             data[signal_name] = signal_data['Data'][-1]
+                        else:
+                             # Fallback if it's not a list (e.g. single value from some other source)
+                             data[signal_name] = signal_data['Data']
+
+                    # Parse GPS: Look for "GPS": [(lat, lon), ...] or similar
+                    if not gps_found and signal_data.get('GPS'):
+                        gps_val = signal_data['GPS']
+                        if isinstance(gps_val, list) and gps_val:
+                            # It's a list (history). Get the last point.
+                            last_gps = gps_val[-1]
+                            # Check if it's a tuple/list of at least 2 elements
+                            if isinstance(last_gps, (list, tuple)) and len(last_gps) >= 2:
+                                data['gps_lat'] = last_gps[0]
+                                data['gps_lon'] = last_gps[1]
+                                gps_found = True
+                        elif isinstance(gps_val, (list, tuple)) and len(gps_val) >= 2:
+                            # It's a single tuple/list (lat, lon)
+                             data['gps_lat'] = gps_val[0]
+                             data['gps_lon'] = gps_val[1]
+                             gps_found = True
 
                 # Return data if we have at least one signal value, otherwise None
                 if len(data) > 1:  # More than just timestamp
+                    if not gps_found:
+                         # Use default/dummy keys if missing to prevent callback errors?
+                         # Or rely on defaults in callbacks.
+                         pass 
                     return data
                 else:
                     logging.warning("⚠️ API returned no signal data")

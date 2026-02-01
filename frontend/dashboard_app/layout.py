@@ -21,6 +21,8 @@ AVAILABLE_VARIABLES = {
     'avg_cell_voltage': 'Avg Cell Voltage (V)',
     'low_cell_voltage': 'Min Cell Voltage (V)',
     'high_cell_voltage': 'Max Cell Voltage (V)',
+    'is_charging': 'Is Charging (Bool)',
+    'DTC1': 'DTC Code'
 }
 AVAILABLE_CHARTS = {'gauge': 'Gauge', 'timeseries': 'Time Series', 'bar': 'Bar (Current)'}
 initial_layout_config = {
@@ -42,6 +44,9 @@ def create_dashboard_layout():
     
     # This is your entire original layout, now inside a variable
     static_dashboard_content = html.Div([
+        # DTC Alert Section
+        html.Div(id="dtc-alert", className="dtc-alert hidden"),
+
         # GPS Map Section (Moved to Top)
         html.Div([
             html.H3("GPS Location", className="section-title"),
@@ -65,10 +70,13 @@ def create_dashboard_layout():
             ], className="map-container")
         ], className="map-section"),
 
-        # Row 1: Speed and Battery Voltage
+        # Row 1: Speed, RPM, and Battery Voltage
         html.Div([
             html.Div([
                 dcc.Graph(id="speed-gauge"),
+            ], className="gauge-container"),
+            html.Div([
+                dcc.Graph(id="rpm-gauge"),
             ], className="gauge-container"),
             html.Div([
                 dcc.Graph(id="voltage-gauge"),
@@ -76,12 +84,15 @@ def create_dashboard_layout():
             ], className="gauge-container"),
         ], className="gauge-row"),
         
-        # Row 2: SOC and Temperature Overview
+        # Row 2: SOC, Cell Voltages, and Temperature Overview
         html.Div([
             html.Div([
                 dcc.Graph(id="soc-gauge"),
                 html.Div(id="soc-status-indicator")
             ], className="gauge-container"),
+            html.Div([
+                dcc.Graph(id="cell-voltage-chart"),
+            ], className="chart-container"),
             html.Div([
                 dcc.Graph(id="temp-overview"),
                 html.Button("Switch to Time Series", id="toggle-temp-chart-btn", n_clicks=0, className="control-btn small")
@@ -133,6 +144,8 @@ def create_dashboard_layout():
                 html.H3("Control Panel", className="control-panel-title"),
                 html.Div([
                     html.Div(id="connection-status", className="status-indicator"),
+                    html.Div(id="charging-status-indicator", className="status-indicator", style={'marginLeft': '10px'}),
+                ], style={'display': 'flex', 'alignItems': 'center', 'justifyContent': 'center', 'marginBottom': '15px'}),
                     
                     # Data Source Selection
                     html.Div([
@@ -147,20 +160,20 @@ def create_dashboard_layout():
                             className="data-mode-dropdown",
                             clearable=False
                         )
-                    ], className="mode-selector"),
+                    ], className="mode-selector", style={'marginBottom': '15px', 'justifyContent': 'center'}),
                     
                     # Connection Actions
                     html.Div([
                         html.Button("Start", id="start-btn", n_clicks=0, className="control-btn start-btn"),
                         html.Button("Stop", id="stop-btn", n_clicks=0, className="control-btn stop-btn")
-                    ], className="control-buttons"),
+                    ], className="control-buttons", style={'justifyContent': 'center', 'marginBottom': '15px'}),
                     
                     # Manager Button
                     html.Div([
                          html.Button("Manage Logs ▼", id="manage-logs-btn", n_clicks=0, className="control-btn", style={'marginTop': '10px', 'width': '100%', 'backgroundColor': '#34495e', 'color': 'white'})
                     ], className="control-buttons", style={'justifyContent': 'center'}),
                     
-                ], className="control-panel-content"),
+
                 html.Div(id="error-notification", className="error-notification hidden"),
 
                 # --- Collapsible Log Management Dropdown ---
@@ -168,48 +181,51 @@ def create_dashboard_layout():
                     html.Div([
                         html.H4("Log Management", className="section-title", style={'marginBottom': '10px', 'fontSize': '1.2em'}),
                         
-                        # File Management Actions
+                        # Unified Log Management
                         html.Div([
-                            html.H5("File Actions", className="file-actions-title"),
+                            html.H5("Log File & Actions", className="section-title"),
                             
-                            # File Selection Section
+                            # Single File Selection
                             html.Div([
-                                html.Label("Select File:", className="file-action-label"),
+                                html.Label("Select Log File:", className="control-label"),
                                 dcc.Dropdown(
-                                    id="selected-file-for-action", 
-                                    placeholder="Select a file...",
-                                    className="file-selection-dropdown"
+                                    id="selected-log-file", 
+                                    placeholder="Choose log file...",
+                                    className="playback-dropdown"
                                 )
-                            ], className="file-action-section"),
+                            ], className="playback-action-section", style={'marginBottom': '15px'}),
                             
-                            # Actions
+                            # File Actions Row
                             html.Div([
                                 html.Button("Delete", id="delete-file-btn", n_clicks=0, className="file-action-btn delete-btn"),
                                 dcc.Input(id="new-name-input", type="text", placeholder="New Name", className="file-input", style={'width': '120px'}),
                                 html.Button("Rename", id="rename-file-btn", n_clicks=0, className="file-action-btn rename-btn"),
-                            ], className="file-action-row", style={'marginBottom': '10px'}),
+                                html.Button("Delete All", id="delete-all-btn", n_clicks=0, className="file-action-btn delete-all-btn", style={'marginLeft': 'auto'})
+                            ], className="file-action-row", style={'marginBottom': '20px', 'display': 'flex', 'gap': '10px', 'alignItems': 'center'}),
+                            
+                            html.Div(id="file-operation-status", className="operation-status", style={'marginBottom': '15px'}),
 
-                            # Delete All
-                            html.Div([
-                                html.Button("Delete All Files", id="delete-all-btn", n_clicks=0, className="file-action-btn delete-all-btn")
-                            ], className="file-action-section"),
-                            
-                            html.Div(id="file-operation-status", className="operation-status")
-                        ], className="file-management-actions"),
-                        
-                        # Playback Controls (Full)
-                        html.Div([
+                            html.Hr(style={'borderColor': 'rgba(255,255,255,0.1)', 'margin': '0 0 15px 0'}),
+
                             html.H5("Playback Controls", className="playback-actions-title"),
-                            # File Selection Section
-                            html.Div([
-                                html.Label("Select Playback File:", className="playback-action-label"),
-                                dcc.Dropdown(
-                                    id="selected-log-file", 
-                                    placeholder="Choose playback file...",
-                                    className="playback-dropdown"
-                                )
-                            ], className="playback-action-section"),
+
                             
+                            # Control Buttons Section
+                            html.Div([
+                                html.Label("Speed:", className="playback-action-label", style={'marginRight': '10px'}),
+                                dcc.Dropdown(
+                                    id="playback-speed-selector",
+                                    options=[
+                                        {'label': 'Real-time (Fast)', 'value': 'fast'},
+                                        {'label': 'Slow (100ms)', 'value': 'slow'},
+                                    ],
+                                    value='slow',  # Default to slow
+                                    clearable=False,
+                                    className="playback-dropdown",
+                                    style={'width': '150px'}
+                                ),
+                            ], className="playback-action-section", style={'display': 'flex', 'alignItems': 'center', 'marginBottom': '10px'}),
+
                             # Control Buttons Section
                             html.Div([
                                 html.Button("⏮", id="prev-step-btn", n_clicks=0, className="playback-action-btn control-btn small", title="Previous Frame", disabled=True),
@@ -234,7 +250,21 @@ def create_dashboard_layout():
                                 )
                             ], style={'marginTop': '20px', 'padding': '0 10px'}),
                             
-                            html.Div(id="playback-status", className="playback-status-display", style={'marginTop': '10px'})
+                            html.Div([
+                                html.Span("Frame: ", className="playback-status-label"),
+                                dcc.Input(
+                                    id="playback-frame-input",
+                                    type="number",
+                                    placeholder="0",
+                                    value=0,
+                                    min=0,
+                                    step=1,
+                                    className="playback-frame-input",
+                                    style={'width': '70px', 'marginRight': '5px', 'textAlign': 'right'}
+                                ),
+                                html.Span("/ 0", id="playback-total-frames", className="playback-total-label"),
+                                html.Span("", id="playback-status", style={'marginLeft': '10px', 'fontStyle': 'italic'}) # Status text like "Playing", "Paused"
+                            ], className="playback-status-display", style={'marginTop': '10px', 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'center'})
                         ], className="playback-management-actions")
 
                     ], style={'maxHeight': '600px', 'overflowY': 'auto'})
@@ -243,7 +273,7 @@ def create_dashboard_layout():
                     'position': 'absolute', 
                     'top': '100%', 
                     'right': '0', 
-                    'width': '400px', 
+                    'width': '600px', 
                     'backgroundColor': '#1e2329', 
                     'border': '1px solid #ffd700', 
                     'borderRadius': '10px', 

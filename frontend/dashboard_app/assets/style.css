@@ -9,10 +9,14 @@
     /* Replace with TITLE_FONT_SIZE */
     --border-radius: 20px;
     /* Replace with BORDER_RADIUS */
-    --background-color: #000000;
-    --container-bg: #1e2329;
+    --background-color: #0d1117;
+    /* Darker background */
+    --container-bg: rgba(30, 35, 41, 0.6);
+    /* Semi-transparent */
     --primary-color: #ffd700;
     --text-color: #e8e8e8;
+    --glass-border: 1px solid rgba(255, 255, 255, 0.1);
+    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
 }
 
 body {
@@ -94,10 +98,13 @@ body {
 .chart-container-full {
     flex: 1;
     background: var(--container-bg);
+    backdrop-filter: blur(10px);
+    /* Glassmorphism blur */
+    -webkit-backdrop-filter: blur(10px);
     border-radius: var(--border-radius);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-    border: 1px solid #2c3e50;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: var(--glass-shadow);
+    border: var(--glass-border);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
     height: 300px;
     /* adjust as needed */
     min-height: 200px;
@@ -618,12 +625,12 @@ body {
 }
 
 .Select-menu-outer {
-    background-color: var(--container-bg) !important;
+    background-color: #1e2329 !important;
     border: 1px solid #34495e !important;
 }
 
 .Select-option {
-    background-color: var(--container-bg) !important;
+    background-color: #1e2329 !important;
     color: var(--text-color) !important;
     font-size: 0.9em !important;
     padding: 8px 12px !important;
@@ -650,7 +657,7 @@ body {
 }
 
 ._dash-dropdown .Select-menu {
-    background-color: var(--container-bg) !important;
+    background-color: #1e2329 !important;
     border: 1px solid #34495e !important;
 }
 
@@ -798,6 +805,45 @@ body {
     margin-bottom: 20px;
     border-bottom: 2px solid #34495e;
     background-color: var(--container-bg);
+}
+
+/* --- DTC Alert Styling --- */
+.dtc-alert {
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: var(--border-radius);
+    font-weight: bold;
+    text-align: center;
+    font-size: 1.5em;
+    animation: pulse-red 2s infinite;
+    display: none;
+    /* Default hidden */
+}
+
+.dtc-alert.visible {
+    display: block;
+    background-color: rgba(220, 53, 69, 0.8);
+    border: 2px solid #ff4444;
+    color: white;
+    box-shadow: 0 0 20px rgba(220, 53, 69, 0.5);
+}
+
+.dtc-alert.hidden {
+    display: none;
+}
+
+@keyframes pulse-red {
+    0% {
+        box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7);
+    }
+
+    70% {
+        box-shadow: 0 0 0 10px rgba(220, 53, 69, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(220, 53, 69, 0);
+    }
 }
 
 .custom-tab {
