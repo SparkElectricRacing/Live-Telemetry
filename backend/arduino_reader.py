@@ -2,15 +2,6 @@ import serial # pyserial
 import time
 import global_vars as gv
 
-# [0] hardcoded sanity assert value (0xbb)
-# [1] CAN device id
-# [2] Subidentifier (for devices that send more than one type of data per address, i.e. from BMS AUX (0x7D): 0x00 = low cell V, 0x01 = high cell V, etc.)
-# [3-6] timestamp, in ms from device enable
-# [7-14*] data, big-endian? (i need to double check the endianness but memcpy gives the correct result either way)
-# [15-18] GPS Longitude
-# [19-22] GPS Latitude
-# [23*] hardcoded sanity assert value (0x9a)
-# So 24 bytes / entry gives us a lot of wiggle room for the amt of data we send over
 def avg_temp(data):
     # static_cast<int>(frame->data[1])
     return ((data >> 8) & 0xFF)
