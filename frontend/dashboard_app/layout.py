@@ -20,9 +20,7 @@ AVAILABLE_VARIABLES = {
     'rpm_speed': 'RPM Speed',
     'avg_cell_voltage': 'Avg Cell Voltage (V)',
     'low_cell_voltage': 'Min Cell Voltage (V)',
-    'high_cell_voltage': 'Max Cell Voltage (V)',
-    'is_charging': 'Is Charging (Bool)',
-    'DTC1': 'DTC Code'
+    'high_cell_voltage': 'Max Cell Voltage (V)'
 }
 AVAILABLE_CHARTS = {'gauge': 'Gauge', 'timeseries': 'Time Series', 'bar': 'Bar (Current)'}
 initial_layout_config = {
@@ -143,8 +141,8 @@ def create_dashboard_layout():
             html.Div([
                 html.H3("Control Panel", className="control-panel-title"),
                 html.Div([
-                    html.Div(id="connection-status", className="status-indicator"),
-                    html.Div(id="charging-status-indicator", className="status-indicator", style={'marginLeft': '10px'}),
+                    html.Div(id="connection-status", className="status-indicator", style={'width': '220px', 'height': '40px', 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'center', 'whiteSpace': 'nowrap', 'overflow': 'hidden', 'textOverflow': 'ellipsis', 'boxSizing': 'border-box', 'fontSize': '1em'}),
+                    html.Div(id="charging-status-indicator", className="status-indicator", style={'marginLeft': '10px', 'width': '220px', 'height': '40px', 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'center', 'whiteSpace': 'nowrap', 'overflow': 'hidden', 'textOverflow': 'ellipsis', 'boxSizing': 'border-box', 'fontSize': '1em'}),
                 ], style={'display': 'flex', 'alignItems': 'center', 'justifyContent': 'center', 'marginBottom': '15px'}),
                     
                     # Data Source Selection

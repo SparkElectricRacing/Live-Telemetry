@@ -24,7 +24,11 @@ def create_speed_timeseries(data: Dict[str, Any]) -> go.Figure:
         fig.update_layout(
             title=dict(
                 text="Vehicle Speed Over Time (No Data)",
-                font=dict(color='#e8e8e8', size=TITLE_FONT_SIZE, family=CHART_FONT)
+                x=0.5,
+                y=0.95,
+                xanchor='center',
+                yanchor='top',
+                font=dict(color='#e8e8e8', size=20, family=CHART_FONT)
             ),
             yaxis_title="Speed (mph)",
             xaxis_title="Time",
@@ -52,7 +56,11 @@ def create_speed_timeseries(data: Dict[str, Any]) -> go.Figure:
     fig.update_layout(
         title=dict(
             text="Vehicle Speed Over Time",
-            font=dict(color='#e8e8e8', size=TITLE_FONT_SIZE, family=CHART_FONT)
+            x=0.5,
+            y=0.95,
+            xanchor='center',
+            yanchor='top',
+            font=dict(color='#e8e8e8', size=20, family=CHART_FONT)
         ),
         yaxis_title="Speed (mph)",
         xaxis_title="Time",
@@ -76,7 +84,11 @@ def create_voltage_timeseries(data: Dict[str, Any]) -> go.Figure:
         fig.update_layout(
             title=dict(
                 text="Battery Voltage Over Time (No Data)",
-                font=dict(color='#e8e8e8', size=TITLE_FONT_SIZE, family=CHART_FONT)
+                x=0.5,
+                y=0.95,
+                xanchor='center',
+                yanchor='top',
+                font=dict(color='#e8e8e8', size=20, family=CHART_FONT)
             ),
             yaxis_title="Voltage (V)",
             xaxis_title="Time",
@@ -104,7 +116,11 @@ def create_voltage_timeseries(data: Dict[str, Any]) -> go.Figure:
     fig.update_layout(
         title=dict(
             text="Battery Voltage Over Time",
-            font=dict(color='#e8e8e8', size=TITLE_FONT_SIZE, family=CHART_FONT)
+            x=0.5,
+            y=0.95,
+            xanchor='center',
+            yanchor='top',
+            font=dict(color='#e8e8e8', size=20, family=CHART_FONT)
         ),
         yaxis_title="Voltage (V)",
         xaxis_title="Time",
@@ -128,7 +144,11 @@ def create_soc_timeseries(data: Dict[str, Any]) -> go.Figure:
         fig.update_layout(
             title=dict(
                 text="Battery SOC Over Time (No Data)",
-                font=dict(color='#e8e8e8', size=TITLE_FONT_SIZE, family=CHART_FONT)
+                x=0.5,
+                y=0.95,
+                xanchor='center',
+                yanchor='top',
+                font=dict(color='#e8e8e8', size=20, family=CHART_FONT)
             ),
             yaxis_title="SOC (%)",
             xaxis_title="Time",
@@ -156,7 +176,11 @@ def create_soc_timeseries(data: Dict[str, Any]) -> go.Figure:
     fig.update_layout(
         title=dict(
             text="Battery SOC Over Time",
-            font=dict(color='#e8e8e8', size=TITLE_FONT_SIZE, family=CHART_FONT)
+            x=0.5,
+            y=0.95,
+            xanchor='center',
+            yanchor='top',
+            font=dict(color='#e8e8e8', size=20, family=CHART_FONT)
         ),
         yaxis_title="SOC (%)",
         xaxis_title="Time",
@@ -199,7 +223,11 @@ def create_temperature_timeseries(data: Dict[str, Any]) -> go.Figure:
     fig.update_layout(
         title=dict(
             text="Temperatures Over Time",
-            font=dict(color='#e8e8e8', size=TITLE_FONT_SIZE, family=CHART_FONT)
+            x=0.5,
+            y=0.95,
+            xanchor='center',
+            yanchor='top',
+            font=dict(color='#e8e8e8', size=20, family=CHART_FONT)
         ),
         yaxis_title="Temperature (°C)",
         xaxis_title="Time",
@@ -280,7 +308,11 @@ def create_cell_voltage_chart(data: Dict[str, Any]) -> go.Figure:
         autosize=False,
         title=dict(
             text="Cell Voltages",
-            font=dict(color='#e8e8e8', size=TITLE_FONT_SIZE, family=CHART_FONT)
+            x=0.5,
+            y=0.95,
+            xanchor='center',
+            yanchor='top',
+            font=dict(color='#e8e8e8', size=20, family=CHART_FONT)
         ),
         yaxis_title="Voltage (V)",
         yaxis=dict(color='#e8e8e8', gridcolor='#34495e', range=[2.5, 4.5], fixedrange=True),
@@ -354,13 +386,17 @@ def create_temperature_number_display(data: Dict[str, Any]) -> go.Figure:
 
     fig.update_layout(
         autosize=False,
-        height=300,
-        margin=dict(l=20, r=20, t=50, b=20),
+        height=CHART_HEIGHT,
+        margin=dict(l=20, r=20, t=60, b=20),
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
         title=dict(
             text="Current Temperatures",
-            font=dict(color='#e8e8e8', size=TITLE_FONT_SIZE + 2, family=CHART_FONT)
+            x=0.5,
+            y=0.95,
+            xanchor='center',
+            yanchor='top',
+            font=dict(color='#e8e8e8', size=20, family=CHART_FONT)
         ),
         font=dict(color='#e8e8e8', family=CHART_FONT)
     )
@@ -408,7 +444,11 @@ def create_empty_temperature_bar_chart() -> go.Figure:
         autosize=False,
         title=dict(
             text="Current Temperatures (No Data)",
-            font=dict(color='#e8e8e8', size=TITLE_FONT_SIZE, family=CHART_FONT)
+            x=0.5,
+            y=0.95,
+            xanchor='center',
+            yanchor='top',
+            font=dict(color='#e8e8e8', size=20, family=CHART_FONT)
         ),
         yaxis_title="Temperature (°C)",
         yaxis=dict(color='#e8e8e8', gridcolor='#34495e', range=[0, 80], fixedrange=True),

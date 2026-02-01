@@ -59,15 +59,17 @@ def create_dynamic_figure(variable, chart_type, data):
         
         fig = go.Figure(go.Indicator(mode="gauge+number", value=current_value,
                                      domain={'x': [0, 1], 'y': [0, 1]},
-                                     title={'text': title},
+                                     # title={'text': title},
                                      gauge={'axis': {'range': range_val}, 'bar': {'color': "#27ae60"}}))
+        
+        fig.update_layout(title=dict(text=title, x=0.5, y=0.95, xanchor='center', yanchor='top', font=dict(size=20)))
     elif chart_type == 'timeseries':
         fig.add_trace(go.Scatter(x=timestamps, y=y_data, mode='lines', name=title, line=dict(color='#ffd700')))
-        fig.update_layout(title=title, xaxis_title="Time")
+        fig.update_layout(title=dict(text=title, x=0.5, y=0.95, xanchor='center', yanchor='top', font=dict(size=20)), xaxis_title="Time")
     elif chart_type == 'bar':
         fig.add_trace(go.Bar(x=[title], y=[current_value], text=[f'{current_value:.1f}'],
                              textposition='auto', marker_color='#3498db'))
-        fig.update_layout(title=f"Current {title}")
+        fig.update_layout(title=dict(text=f"Current {title}", x=0.5, y=0.95, xanchor='center', yanchor='top', font=dict(size=20)))
 
     fig.update_layout(height=300, margin=dict(l=40, r=20, t=60, b=40),
                       plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
