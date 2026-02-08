@@ -120,7 +120,7 @@ def create_dashboard_layout():
     
     
     # --- NEW: Main layout with Tabs ---
-    return html.Div([   # main container 
+    return html.Div(className="page-wrapper", children=[ html.Div(children=[
         # Top row with logo, title, and control panel (from your original layout.py)
         html.Div([
             # Left side: Logo
@@ -134,8 +134,16 @@ def create_dashboard_layout():
             
             # Center: Title
             html.Div([
-                html.H1("Live Telemetry Dashboard", className="header-title")
+                html.H1("Live Telemetry Dashboard", className="header-title"),
+                html.Button([
+                    html.Div(className="bell-icon"),
+                    html.Span(id="notification-badge", className="notification-badge", style={'display': 'none'})
+                ], id="sidebar-toggle-btn", className="sidebar-toggle-btn", n_clicks=0)
             ], className="header-center"),
+            
+            # Stores for Notification Logic
+            dcc.Store(id='latest-notification-ts', data=0),
+            dcc.Store(id='last-read-ts', data=0),
             
             # Right side: Control Panel (boxed)
             html.Div([
@@ -300,10 +308,19 @@ def create_dashboard_layout():
         dcc.Store(id='page-load-trigger', data=0),  # Trigger initial load
         dcc.Store(id='file-action-store'),
         dcc.Store(id='selected-log-for-summary'),  # Store for selected log file
+        dcc.Store(id='notification-state', data={}), # Store for notification history
         html.Div(id='delete-trigger', style={'display': 'none'}),
+        
+        # Notification Container (Moved to sidebar)
+        # html.Div(id='notification-container', className='notification-container'),
         
         # --- NEW: Store and Download for Layout Editor ---
         dcc.Store(id='layout-config-store', data=initial_layout_config, storage_type='session'),
         dcc.Download(id="download-layout-json"),
-        
-    ], className="main-container")
+    ], className="main-container"),
+    html.Div(id="notification-sidebar", className="notification-sidebar", children=[
+        html.H3("Notifications", className="sidebar-title"),
+        html.Div(id="notification-container", className="notification-list")
+    ])
+
+    ])

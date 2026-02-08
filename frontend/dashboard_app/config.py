@@ -107,3 +107,36 @@ SOC_THRESHOLDS = {
 
 # Data limits
 MAX_DATA_POINTS = 100  # Maximum number of data points to keep in memory
+
+# Notification Configuration
+NOTIFICATION_COOLDOWN = 5  # Seconds before repeating a notification for the same issue
+
+# Danger Thresholds (Min, Max) - None means no limit
+DANGER_THRESHOLDS = {
+    'pack_voltage': [
+        {'min': 320, 'label': 'Low Pack Voltage', 'type': 'danger'},
+        {'max': 590, 'label': 'High Pack Voltage', 'type': 'danger'}
+    ],
+    'pack_SOC': [
+        {'min': 40, 'label': 'Low Battery SOC', 'type': 'warning', 'id_suffix': '50', 'message': 'Battery SOC at {value:.1f}%'},
+        {'min': 20, 'label': 'Crit Battery SOC', 'type': 'danger', 'id_suffix': '20', 'message': 'Battery SOC critical at {value:.1f}%'},
+        {'min': 10, 'label': 'Empty Battery SOC', 'type': 'danger', 'id_suffix': '10', 'message': 'Battery SOC near empty {value:.1f}%!'}
+    ],
+    'max_cell_temp': [
+        {'max': 60, 'label': 'High Max Cell Temp', 'type': 'danger'}
+    ],
+    'low_cell_voltage': [
+        {'min': 2.5, 'label': 'Low Cell Voltage', 'type': 'danger'}
+    ],
+    'high_cell_voltage': [
+        {'max': 4.25, 'label': 'High Cell Voltage', 'type': 'danger'}
+    ],
+    'speedMPH': [
+        {'max': 100, 'label': 'High Speed Warning', 'type': 'warning'},
+        {'max': 120, 'label': 'Excessive Speed', 'type': 'danger'}
+    ],
+    'avg_temp': [
+        {'max': 60, 'label': 'High Avg Temp', 'type': 'warning'},
+        {'max': 70, 'label': 'Avg Temp Overheat', 'type': 'danger'}
+    ]
+}

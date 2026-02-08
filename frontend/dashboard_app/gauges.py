@@ -99,6 +99,7 @@ def create_voltage_gauge(data: Dict[str, Any]) -> go.Figure:
     fig = go.Figure(go.Indicator(
         mode="gauge+number+delta",
         value=current_voltage,
+        number={'valueformat': ".1f"},
         domain={'x': [0, 1], 'y': [0, 1]},
         # title={'text': "Battery Voltage (V)"},
         delta={'reference': previous_voltage},

@@ -7,7 +7,8 @@ import shutil
 import logging
 import dash
 from datetime import datetime
-from dash import Output, Input, State, html, callback_context, exceptions
+from dash import Output, Input, State, html, callback_context, exceptions, MATCH, ALL
+import uuid
 
 from config import MAX_DATA_POINTS, LOG_DIRECTORY
 
@@ -47,6 +48,57 @@ def register_all_callbacks(app, telemetry_receiver):
             logging.info("Telemetry collection stopped")
             return "Stopped"
             
+    # --- Sidebar Toggle Callback (Clientside for Map Resize) ---
+    app.clientside_callback(
+        """
+        function(n_clicks, current_style) {
+            // Calculate new style
+            let newStyle = {'display': 'flex'};
+            if (n_clicks > 0) {
+                if (!current_style || current_style.display !== 'none') {
+                    newStyle = {'display': 'none'};
+                }
+            }
+            
+            // Trigger resize event after a short delay
+            setTimeout(function() {
+                window.dispatchEvent(new Event('resize'));
+            }, 300);
+            
+            // If opening (flex), update last read timestamp
+            let newReadTs = window.dash_clientside.no_update;
+            if (newStyle.display === 'flex') {
+                newReadTs = Date.now();
+            }
+            
+            return [newStyle, newReadTs];
+        }
+        """,
+        Output('notification-sidebar', 'style'),
+        Output('last-read-ts', 'data'),
+        Input('sidebar-toggle-btn', 'n_clicks'),
+        State('notification-sidebar', 'style'),
+        prevent_initial_call=True
+    )
+
+    # --- Clientside Callback: Badge Visibility ---
+    app.clientside_callback(
+        """
+        function(latest_ts, last_read_ts) {
+            if (!latest_ts) return {'display': 'none'};
+            if (!last_read_ts) last_read_ts = 0;
+            
+            if (latest_ts > last_read_ts) {
+                return {'display': 'block'};
+            }
+            return {'display': 'none'};
+        }
+        """,
+        Output('notification-badge', 'style'),
+        Input('latest-notification-ts', 'data'),
+        Input('last-read-ts', 'data')
+    )
+
     # update the stored telemetry data
     @app.callback(
         Output('telemetry-store', 'data'),
@@ -491,3 +543,178 @@ def register_all_callbacks(app, telemetry_receiver):
             return [lat, lon]
         # Default dummy position if no data
         return [33.53250, -86.61889]
+
+    # --- NEW: Notification Callback ---
+    @app.callback(
+        Output('notification-container', 'children'),
+        Output('notification-state', 'data'),
+        Output('latest-notification-ts', 'data'),
+        Input('telemetry-store', 'data'),
+        Input('interval-component', 'n_intervals'),
+        State('notification-state', 'data'),
+        State('notification-container', 'children')
+    )
+    def update_notifications(data, n, notification_state, current_children):
+        # Import inside function to avoid circular imports
+        from config import DANGER_THRESHOLDS, NOTIFICATION_COOLDOWN
+        import time
+        
+        if not data:
+            return dash.no_update, dash.no_update, dash.no_update
+
+        # Initialize state if needed
+        if notification_state is None:
+            notification_state = {}
+            
+        current_time = time.time()
+        new_notifications_added = False
+        
+        # Check through all thresholds
+        for var_name, rules in DANGER_THRESHOLDS.items():
+            if var_name in data and len(data[var_name]) > 0:
+                current_value = data[var_name][-1]
+                
+                # Ensure rules is a list
+                if isinstance(rules, dict):
+                    rules = [rules]
+                
+                # Find all triggered rules
+                active_min_rules = []
+                active_max_rules = []
+                
+                for rule in rules:
+                    if 'min' in rule and rule['min'] is not None and current_value < rule['min']:
+                        active_min_rules.append(rule)
+                    if 'max' in rule and rule['max'] is not None and current_value > rule['max']:
+                        active_max_rules.append(rule)
+                        
+                # Select the most severe rule (lowest min, highest max)
+                target_rules = []
+                
+                if active_min_rules:
+                    # For min violations, the one with the lowest threshold is the most severe/specific
+                    # e.g. Value 9. Triggered <50, <20, <10. We want <10.
+                    most_severe_min = min(active_min_rules, key=lambda r: r['min'])
+                    target_rules.append(most_severe_min)
+                    
+                if active_max_rules:
+                    # For max violations, the one with the highest threshold is the most severe
+                    # e.g. Value 130. Triggered >100, >120. We want >120.
+                    most_severe_max = max(active_max_rules, key=lambda r: r['max'])
+                    target_rules.append(most_severe_max)
+                    
+                # Process the selected target rules
+                for rule in target_rules:
+                    is_min = 'min' in rule and rule['min'] is not None and current_value < rule['min']
+                    is_max = 'max' in rule and rule['max'] is not None and current_value > rule['max']
+                    
+                    if is_min:
+                        rule_suffix = rule.get('id_suffix', 'low')
+                        rule_id = f"{var_name}_{rule_suffix}"
+                        threshold_val = rule['min']
+                        default_title = f"Low {rule.get('label', var_name)}"
+                        default_msg = f"Value {current_value:.1f} is below minimum {threshold_val}"
+                    elif is_max:
+                        rule_suffix = rule.get('id_suffix', 'high')
+                        rule_id = f"{var_name}_{rule_suffix}"
+                        threshold_val = rule['max']
+                        default_title = f"High {rule.get('label', var_name)}"
+                        default_msg = f"Value {current_value:.1f} is above maximum {threshold_val}"
+                    else:
+                        continue
+
+                    # Check cooldown
+                    last_time = notification_state.get(rule_id, 0)
+                    if current_time - last_time > NOTIFICATION_COOLDOWN:
+                        # TRIGGER NOTIFICATION
+                        notification_state[rule_id] = current_time
+                        
+                        # Create new notification element
+                        notif_id = str(uuid.uuid4())
+                        
+                        # Use custom message if available or construct one
+                        message_text = rule.get('message', default_msg).format(value=current_value)
+                        
+                        new_item = html.Div([
+                            html.Div([
+                                html.Strong(rule.get('label', default_title), className="notification-title"),
+                                html.Span("✕", id={'type': 'close-notification', 'index': notif_id}, className="notification-close")
+                            ], style={'display': 'flex', 'justifyContent': 'space-between', 'width': '100%', 'marginBottom': '5px'}),
+                            html.Div(message_text, className="notification-message"),
+                        ], id={'type': 'notification-item', 'index': notif_id}, className=f"notification-toast {rule.get('type', 'warning')}")
+                        
+                        # Add to list (children)
+                        if current_children is None:
+                            current_children = []
+                        
+                        # Insert at top
+                        current_children.insert(0, new_item)
+                        new_notifications_added = True
+                        
+                        # Limit to last 50 notifications
+                        if len(current_children) > 50:
+                            current_children = current_children[:50]
+        
+        # Return updated children and state
+        # Update timestamp if new notifications were added
+        latest_ts = dash.no_update
+        if new_notifications_added:
+            latest_ts = int(time.time() * 1000) # JS timestamp
+            
+        return current_children, notification_state, latest_ts
+
+    # --- NEW: Close Notification Callback ---
+    @app.callback(
+        Output('notification-container', 'children', allow_duplicate=True),
+        Input({'type': 'notification-close', 'index': ALL}, 'n_clicks'),
+        State('notification-container', 'children'),
+        prevent_initial_call=True
+    )
+    def remove_notification(n_clicks, current_children):
+        ctx = dash.callback_context
+        if not ctx.triggered:
+            return dash.no_update
+            
+        try:
+             # Get the ID of the triggered component
+             if not ctx.triggered_id:
+                  return dash.no_update
+
+             triggered_id = ctx.triggered_id
+             # If for some reason it's not a dict (should be with pattern matching)
+             if not isinstance(triggered_id, dict):
+                 return dash.no_update
+             
+             # Check if the specific component that triggered has n_clicks > 0
+             # n_clicks is a list of all matching components' n_clicks
+             # We need to find the one corresponding to triggered_id
+             
+             # Actually, simpler approach:
+             # With pattern matching callbacks, we can look at ctx.triggered again
+             # It contains 'value' which is the n_clicks
+             triggered_value = ctx.triggered[0]['value']
+             
+             if not triggered_value or triggered_value == 0:
+                 return dash.no_update
+
+             note_id = triggered_id['index']
+             toast_id_to_remove = f"toast-{note_id}"
+             
+             if not current_children:
+                 return dash.no_update
+             
+             # Filter out the toast with the matching ID
+             new_children = []
+             for child in current_children:
+                 # Check if child is a dict and has props
+                 if isinstance(child, dict) and 'props' in child:
+                     if child['props'].get('id') != toast_id_to_remove:
+                         new_children.append(child)
+                 else:
+                     new_children.append(child)
+             
+             return new_children
+             
+        except Exception as e:
+            logging.error(f"Error removing notification: {e}")
+            return dash.no_update
