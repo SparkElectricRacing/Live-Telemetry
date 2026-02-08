@@ -112,14 +112,14 @@ Users can save their custom layouts for future use or sharing.
 This diagram illustrates how data moves from the backend telemetry source to the frontend components.
 
 ```mermaid
-graph TD
-    subgraph Backend [Backend (Python/Flask)]
+flowchart TD
+    subgraph Backend ["Backend (Python/Flask)"]
         TR[TelemetryReceiver] -->|Polls/Generates| Data[Raw Data]
         Data -->|Push| Q[Data Queue]
     end
 
-    subgraph Frontend [Frontend (Dash/React)]
-        Interval[Interval Component] -->|Trigger (1s)| CB_Store[Callback: update_store]
+    subgraph Frontend ["Frontend (Dash/React)"]
+        Interval[Interval Component] -->|Trigger 1s| CB_Store[Callback: update_store]
         
         Q -.->|Pull| CB_Store
         CB_Store -->|JSON| Store[dcc.Store: telemetry-store]
@@ -128,7 +128,7 @@ graph TD
         Store -->|Update| Map[GPS Map]
         Store -->|Update| Notif[Notification Logic]
         
-        subgraph Interactivity
+        subgraph Interactivity ["Interactivity"]
             User[User] -->|Click| Toggle[Sidebar Toggle]
             Toggle -->|Client-Side| Resize[Map Resize Event]
             Toggle -->|Client-Side| Read[Mark as Read]
