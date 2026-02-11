@@ -1,7 +1,7 @@
 import serial # pyserial
 import time
 import os
-import global_vars as gv
+from . import global_vars as gv
 
 def avg_temp(data):
     # static_cast<int>(frame->data[1])
@@ -103,7 +103,7 @@ def parse_in(inp):
         timestamp = (inp >> 72) & 0xFFFFFFFF # 4 byte
         subId = (inp >> 104) & 0xFF
         canId = (inp >> 112) & 0xFF
-        gps_lat = (inp >> 120) & 0xFFFFFFFF # 4 byte
+        gps_lat = (inp >> 120) & 0xFFFFFFFF # 4 byte ?This is backwards compared to above
         gps_long = (inp >> 152) & 0xFFFFFFFF # 4 byte
         hcSanValA = (inp >> 184) & 0xFF
         signal_name = SIGNALS.get((canId, subId), "")
@@ -172,9 +172,9 @@ def read_from_arduino(port_name, baud_rate):
             ser.close()
 
 
-## port_name = "/dev/ttyUSB0" 
-port_name = "not_a_port" ## FOR TESTING WITH FILES REMOVE FOR REAL ARDUINO
-baud_rate = 115200
+
 if __name__ == "__main__":
+    test_port_name = "not_a_port" 
+    baud_rate = 115200
     while True:
-        read_from_arduino(port_name, baud_rate)
+        read_from_arduino(test_port_name, baud_rate)
