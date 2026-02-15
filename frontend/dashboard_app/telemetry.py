@@ -34,12 +34,22 @@ class TelemetryReceiver:
         # Playback functionality
         self.playback_mode = False
         self.playback_data = []
+        self.playback_speed = 'slow' # Default to slow
         self.playback_index = 0
         self.playback_paused = False
         self.playback_file = None
         
         # Test API availability on startup
         self.test_api_connection()
+        
+        # Mock Data State
+        self.mock_speed = 0.0
+        self.mock_voltage = 380.0
+        self.mock_temp = 30.0
+        self.mock_soc = 90.0
+        self.mock_soc_draining = True
+        self.mock_danger_mode = False
+        self.mock_danger_timer = 0
         
     def test_api_connection(self):
         """Test if the API is available"""
@@ -131,12 +141,19 @@ class TelemetryReceiver:
                     if not self.playback_paused and self.playback_index < len(self.playback_data):
                         data = self.playback_data[self.playback_index]
                         self.playback_index += 1
-                        # Downsample: only send every 10th data point for smoother playback
-                        if self.playback_index % 10 == 0:
-                            logging.info(f"▶️ Playback: {self.playback_index}/{len(self.playback_data)} - Speed: {data['speedMPH']:.1f} mph")
-                            time.sleep(0.005)  # 5ms between displayed points
+                        
+                        # Use playback_speed to determine sleep time
+                        if self.playback_speed == 'fast':
+                             # Less sleep, might still need downsampling if HUGE file
+                             sleep_time = 0.005 # 5ms
+                             # Optionally skip frames?
                         else:
-                            data = None  # Skip this data point  
+                             # 'slow' mode: roughly 10Hz
+                             sleep_time = 0.1 # 100ms
+                        
+                        logging.info(f"▶️ Playback: {self.playback_index}/{len(self.playback_data)} - Speed: {data.get('speedMPH', 0):.1f} mph")
+                        time.sleep(sleep_time)
+
                     elif self.playback_index >= len(self.playback_data):
                         # Playback finished - restore normal mode
                         logging.info(" Playback finished, restoring normal mode")
@@ -174,20 +191,69 @@ class TelemetryReceiver:
                 time.sleep(1)
     
     def generate_mock_data(self) -> Dict[str, Any]:
-        """Generate realistic mock telemetry data matching all backend signals"""
+        """Generate realistic mock telemetry data with smooth transitions and danger states"""
+        
+        # Manage Danger Mode
+        # If not in danger mode, small chance to enter it
+        if not self.mock_danger_mode:
+            if random.random() < 0.01: # 1% chance per tick to start a danger event
+                self.mock_danger_mode = True
+                self.mock_danger_timer = random.randint(50, 200) # Duration in ticks
+        else:
+            self.mock_danger_timer -= 1
+            if self.mock_danger_timer <= 0:
+                self.mock_danger_mode = False  
+
+        # Targets
+        # Speed: Normal 0-80, Danger 100-140
+        speed_target = random.uniform(100, 140) if self.mock_danger_mode and random.choice([True, False]) else random.uniform(0, 80)
+        
+        # Temp: Normal 30-50, Danger 65-80
+        temp_target = random.uniform(65, 80) if self.mock_danger_mode and random.choice([True, False]) else random.uniform(30, 50)
+        
+        # Voltage: Normal 350-400, Danger 300-340
+        voltage_target = random.uniform(300, 340) if self.mock_danger_mode and random.choice([True, False]) else random.uniform(350, 400)
+        
+        # Smoothly move current values towards targets
+        
+        # Speed ramping
+        if self.mock_speed < speed_target:
+            self.mock_speed += random.uniform(0, 2.0) # Accelerate
+        else:
+            self.mock_speed -= random.uniform(0, 2.0) # Decelerate
+        self.mock_speed = max(0, self.mock_speed) # Clamp matching real physics
+            
+        # Temp ramping (slower)
+        if self.mock_temp < temp_target:
+            self.mock_temp += random.uniform(0, 0.5)
+        else:
+            self.mock_temp -= random.uniform(0, 0.5)
+            
+        # Voltage drift (inverse to speed/load roughly, or just random walk)
+        if self.mock_voltage < voltage_target:
+            self.mock_voltage += random.uniform(0, 1.0)
+        else:
+            self.mock_voltage -= random.uniform(0, 1.0)
+            
+        # SOC (faster drain for testing)
+        self.mock_soc -= random.uniform(0.1, 0.3) # Much faster drain
+        if self.mock_soc < 0: self.mock_soc = 100
+        
         return {
             'timestamp': datetime.now().isoformat(),
-            'speedMPH': random.uniform(0, 80),  # Speed in MPH
-            'rpm_speed': random.uniform(-3000, 0),  # RPM speed (negative values)
-            'pack_voltage': random.uniform(350, 400),  # Pack voltage in V
-            'pack_SOC': random.uniform(20, 95),  # State of charge in %
-            'avg_temp': random.uniform(20, 40),  # Average temperature in °C
-            'avg_cell_voltage': random.uniform(3.3, 3.8),  # Average cell voltage in V
-            'low_cell_voltage': random.uniform(3.0, 3.5),  # Low cell voltage in V
-            'high_cell_voltage': random.uniform(3.6, 4.2),  # High cell voltage in V
-            'max_cell_temp': random.uniform(30, 50),  # Max cell temperature in °C
-            'is_charging': random.choice([True, False]),  # Charging status
-            'DTC1': 0  # Diagnostic trouble code (0 = no errors)
+            'speedMPH': max(0, self.mock_speed),
+            'rpm_speed': -self.mock_speed * 60,
+            'pack_voltage': self.mock_voltage,
+            'pack_SOC': self.mock_soc,
+            'avg_temp': self.mock_temp,
+            'avg_cell_voltage': self.mock_voltage / 100, 
+            'low_cell_voltage': (self.mock_voltage / 100) - 0.2,
+            'high_cell_voltage': (self.mock_voltage / 100) + 0.1,
+            'max_cell_temp': self.mock_temp + 5,
+            'is_charging': random.choice([True, False]),
+            'DTC1': 0,
+            'gps_lat': 33.53250 + random.uniform(-0.0005, 0.0005),
+            'gps_lon': -86.61889 + random.uniform(-0.0005, 0.0005)
         }
     
     def fetch_api_data(self) -> Optional[Dict[str, Any]]:
@@ -200,13 +266,41 @@ class TelemetryReceiver:
                 # Extract the latest value from each signal
                 data = {'timestamp': datetime.now().isoformat()}
 
+                gps_found = False
                 for signal_name, signal_data in signals.items():
-                    if signal_data.get('Data'):  # Check if there's any data
-                        # Get the most recent data point (last in the list)
-                        data[signal_name] = signal_data['Data'][-1]
+                    # Parse Data
+                    if signal_data.get('Data') is not None:
+                        # Existing code assumed list, so we stick to it.
+                        # If Data is [val, val...], take last.
+                        if isinstance(signal_data['Data'], list) and signal_data['Data']:
+                             data[signal_name] = signal_data['Data'][-1]
+                        else:
+                             # Fallback if it's not a list (e.g. single value from some other source)
+                             data[signal_name] = signal_data['Data']
+
+                    # Parse GPS: Look for "GPS": [(lat, lon), ...] or similar
+                    if not gps_found and signal_data.get('GPS'):
+                        gps_val = signal_data['GPS']
+                        if isinstance(gps_val, list) and gps_val:
+                            # It's a list (history). Get the last point.
+                            last_gps = gps_val[-1]
+                            # Check if it's a tuple/list of at least 2 elements
+                            if isinstance(last_gps, (list, tuple)) and len(last_gps) >= 2:
+                                data['gps_lat'] = last_gps[0]
+                                data['gps_lon'] = last_gps[1]
+                                gps_found = True
+                        elif isinstance(gps_val, (list, tuple)) and len(gps_val) >= 2:
+                            # It's a single tuple/list (lat, lon)
+                             data['gps_lat'] = gps_val[0]
+                             data['gps_lon'] = gps_val[1]
+                             gps_found = True
 
                 # Return data if we have at least one signal value, otherwise None
                 if len(data) > 1:  # More than just timestamp
+                    if not gps_found:
+                         # Use default/dummy keys if missing to prevent callback errors?
+                         # Or rely on defaults in callbacks.
+                         pass 
                     return data
                 else:
                     logging.warning("⚠️ API returned no signal data")
@@ -336,3 +430,40 @@ class TelemetryReceiver:
             logging.info("Playback ended - stopping data collection")
             self.stop()
             return
+
+    def seek_playback(self, index: int):
+        """Seek to a specific index in the playback data"""
+        if self.playback_mode and 0 <= index < len(self.playback_data):
+            self.playback_index = index
+            logging.info(f"Seeked to index: {index}")
+            
+            # Use same logic as step_playback: update UI immediately if paused
+            if self.playback_paused:
+                # Manually inject the data point so UI updates immediately even if paused
+                data = self.playback_data[self.playback_index]
+                self.data_queue.put(data)
+            
+            return True
+        return False
+
+    def step_playback(self, steps=1):
+        """Step forward or backward by a number of events"""
+        if self.playback_mode:
+            new_index = self.playback_index + steps
+            if 0 <= new_index < len(self.playback_data):
+                self.playback_index = new_index
+                logging.info(f"Stepped to index: {new_index}")
+                
+                # If step is negative (backwards), we might need to clear the queue/store 
+                # or just let the next update cycle handle it. 
+                # For immediate feedback, we can put the new point on queue? 
+                # Actually, the main thread loop will pick it up if paused? 
+                # If paused, the loop doesn't put data on queue.
+                
+                if self.playback_paused:
+                    # Manually inject the data point so UI updates immediately even if paused
+                    data = self.playback_data[self.playback_index]
+                    self.data_queue.put(data)
+                
+                return True
+        return False

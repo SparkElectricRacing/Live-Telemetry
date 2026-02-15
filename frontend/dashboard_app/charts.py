@@ -13,7 +13,7 @@ from config import (
     TEMP_CHART_HEIGHT, TEMP_CHART_MARGIN, CHART_COLORS,
     VOLTAGE_THRESHOLDS, SOC_THRESHOLDS
 )
-from gauges import create_speed_gauge, create_voltage_gauge, create_soc_gauge
+from gauges import create_speed_gauge, create_voltage_gauge, create_soc_gauge, create_rpm_gauge
 
 
 # Chart Creation Functions
@@ -24,7 +24,11 @@ def create_speed_timeseries(data: Dict[str, Any]) -> go.Figure:
         fig.update_layout(
             title=dict(
                 text="Vehicle Speed Over Time (No Data)",
-                font=dict(color='#e8e8e8', size=TITLE_FONT_SIZE, family=CHART_FONT)
+                x=0.5,
+                y=0.95,
+                xanchor='center',
+                yanchor='top',
+                font=dict(color='#e8e8e8', size=20, family=CHART_FONT)
             ),
             yaxis_title="Speed (mph)",
             xaxis_title="Time",
@@ -52,7 +56,11 @@ def create_speed_timeseries(data: Dict[str, Any]) -> go.Figure:
     fig.update_layout(
         title=dict(
             text="Vehicle Speed Over Time",
-            font=dict(color='#e8e8e8', size=TITLE_FONT_SIZE, family=CHART_FONT)
+            x=0.5,
+            y=0.95,
+            xanchor='center',
+            yanchor='top',
+            font=dict(color='#e8e8e8', size=20, family=CHART_FONT)
         ),
         yaxis_title="Speed (mph)",
         xaxis_title="Time",
@@ -76,7 +84,11 @@ def create_voltage_timeseries(data: Dict[str, Any]) -> go.Figure:
         fig.update_layout(
             title=dict(
                 text="Battery Voltage Over Time (No Data)",
-                font=dict(color='#e8e8e8', size=TITLE_FONT_SIZE, family=CHART_FONT)
+                x=0.5,
+                y=0.95,
+                xanchor='center',
+                yanchor='top',
+                font=dict(color='#e8e8e8', size=20, family=CHART_FONT)
             ),
             yaxis_title="Voltage (V)",
             xaxis_title="Time",
@@ -104,7 +116,11 @@ def create_voltage_timeseries(data: Dict[str, Any]) -> go.Figure:
     fig.update_layout(
         title=dict(
             text="Battery Voltage Over Time",
-            font=dict(color='#e8e8e8', size=TITLE_FONT_SIZE, family=CHART_FONT)
+            x=0.5,
+            y=0.95,
+            xanchor='center',
+            yanchor='top',
+            font=dict(color='#e8e8e8', size=20, family=CHART_FONT)
         ),
         yaxis_title="Voltage (V)",
         xaxis_title="Time",
@@ -128,7 +144,11 @@ def create_soc_timeseries(data: Dict[str, Any]) -> go.Figure:
         fig.update_layout(
             title=dict(
                 text="Battery SOC Over Time (No Data)",
-                font=dict(color='#e8e8e8', size=TITLE_FONT_SIZE, family=CHART_FONT)
+                x=0.5,
+                y=0.95,
+                xanchor='center',
+                yanchor='top',
+                font=dict(color='#e8e8e8', size=20, family=CHART_FONT)
             ),
             yaxis_title="SOC (%)",
             xaxis_title="Time",
@@ -156,7 +176,11 @@ def create_soc_timeseries(data: Dict[str, Any]) -> go.Figure:
     fig.update_layout(
         title=dict(
             text="Battery SOC Over Time",
-            font=dict(color='#e8e8e8', size=TITLE_FONT_SIZE, family=CHART_FONT)
+            x=0.5,
+            y=0.95,
+            xanchor='center',
+            yanchor='top',
+            font=dict(color='#e8e8e8', size=20, family=CHART_FONT)
         ),
         yaxis_title="SOC (%)",
         xaxis_title="Time",
@@ -199,7 +223,11 @@ def create_temperature_timeseries(data: Dict[str, Any]) -> go.Figure:
     fig.update_layout(
         title=dict(
             text="Temperatures Over Time",
-            font=dict(color='#e8e8e8', size=TITLE_FONT_SIZE, family=CHART_FONT)
+            x=0.5,
+            y=0.95,
+            xanchor='center',
+            yanchor='top',
+            font=dict(color='#e8e8e8', size=20, family=CHART_FONT)
         ),
         yaxis_title="Temperature (°C)",
         xaxis_title="Time",
@@ -252,6 +280,52 @@ def create_temperature_timeseries(data: Dict[str, Any]) -> go.Figure:
 #     )
     
 #     return fig
+
+
+def create_cell_voltage_chart(data: Dict[str, Any]) -> go.Figure:
+    """Create cell voltage bar chart"""
+    if not data['timestamp']:
+        min_v, avg_v, max_v = 0, 0, 0
+    else:
+        min_v = data['low_cell_voltage'][-1] if data['low_cell_voltage'] else 0
+        avg_v = data['avg_cell_voltage'][-1] if data['avg_cell_voltage'] else 0
+        max_v = data['high_cell_voltage'][-1] if data['high_cell_voltage'] else 0
+
+    fig = go.Figure(go.Bar(
+        x=['Min Cell', 'Avg Cell', 'Max Cell'],
+        y=[min_v, avg_v, max_v],
+        marker_color=[
+            '#e74c3c',  # Min (Red)
+            '#3498db',  # Avg (Blue)
+            '#2ecc71'   # Max (Green)
+        ],
+        text=[f'{min_v:.2f}V', f'{avg_v:.2f}V', f'{max_v:.2f}V'],
+        textposition='auto',
+        textfont=dict(color='#1e2329', size=CHART_FONT_SIZE, family=CHART_FONT)
+    ))
+    
+    fig.update_layout(
+        autosize=False,
+        title=dict(
+            text="Cell Voltages",
+            x=0.5,
+            y=0.95,
+            xanchor='center',
+            yanchor='top',
+            font=dict(color='#e8e8e8', size=20, family=CHART_FONT)
+        ),
+        yaxis_title="Voltage (V)",
+        yaxis=dict(color='#e8e8e8', gridcolor='#34495e', range=[2.5, 4.5], fixedrange=True),
+        xaxis=dict(color='#e8e8e8', fixedrange=True),
+        height=TEMP_CHART_HEIGHT,
+        margin=TEMP_CHART_MARGIN,
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)',
+        font=dict(color='#e8e8e8', family=CHART_FONT)
+    )
+    
+    return fig
+
 
 def create_temperature_number_display(data: Dict[str, Any]) -> go.Figure:
     """Create temperature numeric indicators (Avg Temp and Max Cell Temp) with deltas and large font."""
@@ -312,13 +386,17 @@ def create_temperature_number_display(data: Dict[str, Any]) -> go.Figure:
 
     fig.update_layout(
         autosize=False,
-        height=300,
-        margin=dict(l=20, r=20, t=50, b=20),
+        height=CHART_HEIGHT,
+        margin=dict(l=20, r=20, t=60, b=20),
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
         title=dict(
             text="Current Temperatures",
-            font=dict(color='#e8e8e8', size=TITLE_FONT_SIZE + 2, family=CHART_FONT)
+            x=0.5,
+            y=0.95,
+            xanchor='center',
+            yanchor='top',
+            font=dict(color='#e8e8e8', size=20, family=CHART_FONT)
         ),
         font=dict(color='#e8e8e8', family=CHART_FONT)
     )
@@ -366,7 +444,11 @@ def create_empty_temperature_bar_chart() -> go.Figure:
         autosize=False,
         title=dict(
             text="Current Temperatures (No Data)",
-            font=dict(color='#e8e8e8', size=TITLE_FONT_SIZE, family=CHART_FONT)
+            x=0.5,
+            y=0.95,
+            xanchor='center',
+            yanchor='top',
+            font=dict(color='#e8e8e8', size=20, family=CHART_FONT)
         ),
         yaxis_title="Temperature (°C)",
         yaxis=dict(color='#e8e8e8', gridcolor='#34495e', range=[0, 80], fixedrange=True),
@@ -405,6 +487,20 @@ def register_chart_callbacks(app, telemetry_receiver):
     )
     def update_soc_gauge(data):
         return create_soc_gauge(data)
+
+    @app.callback(
+        Output('rpm-gauge', 'figure'),
+        Input('telemetry-store', 'data')
+    )
+    def update_rpm_gauge(data):
+        return create_rpm_gauge(data)
+
+    @app.callback(
+        Output('cell-voltage-chart', 'figure'),
+        Input('telemetry-store', 'data')
+    )
+    def update_cell_voltage_chart(data):
+        return create_cell_voltage_chart(data)
 
     @app.callback(
         Output('speed-timeseries', 'figure'),
@@ -489,3 +585,38 @@ def register_chart_callbacks(app, telemetry_receiver):
         s_classname = f"status-indicator {s_class}"
 
         return v_text, v_classname, s_text, s_classname
+
+    @app.callback(
+        Output('dtc-alert', 'children'),
+        Output('dtc-alert', 'className'),
+        Input('telemetry-store', 'data')
+    )
+    def update_dtc_alert(data):
+        if not data or not data['DTC1']: # Check if list empty or values 0
+             return "", "dtc-alert hidden"
+        
+        # Check the latest DTC value
+        latest_dtc = data['DTC1'][-1]
+        
+        if latest_dtc != 0:
+            return f"⚠️ DTC DETECTED: Code {latest_dtc}", "dtc-alert visible"
+        
+        return "", "dtc-alert hidden"
+
+    @app.callback(
+        Output('charging-status-indicator', 'children'),
+        Output('charging-status-indicator', 'className'),
+        Input('telemetry-store', 'data')
+    )
+    def update_charging_status(data):
+        if not data or not data.get('is_charging'):
+             return "Not Charging", "status-indicator" # Default style (gray/hidden?)
+        
+        # Check latest status
+        # is_charging might be list of bools or 0/1
+        is_charging = data['is_charging'][-1]
+        
+        if is_charging:
+             return "⚡ Charging", "status-indicator status-good" # Green/Active
+        else:
+             return "Not Charging", "status-indicator"

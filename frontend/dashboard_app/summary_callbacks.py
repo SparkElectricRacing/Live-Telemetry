@@ -18,35 +18,16 @@ from config import LOG_DIRECTORY, CHART_COLORS, CHART_FONT, TITLE_FONT_SIZE, CHA
 def register_summary_callbacks(app):
     """Register callbacks for log file summary and analysis"""
 
-    # Handle clicking on a log file
+    # Handle selecting a log file from the dropdown
     @app.callback(
         Output('selected-log-for-summary', 'data'),
-        Input({'type': 'log-file-item', 'index': ALL}, 'n_clicks'),
-        prevent_initial_call=True
+        Input('control-panel-log-selector', 'value')
     )
-    def handle_log_file_click(n_clicks_list):
-        ctx = callback_context
-        if not ctx.triggered or not ctx.triggered[0]['value']:
-            raise exceptions.PreventUpdate
-
-        # Find which file was clicked
-        triggered_prop = ctx.triggered[0]['prop_id']
-
-        try:
-            # Extract the JSON part before the dot (the ID)
-            if '.n_clicks' in triggered_prop:
-                id_str = triggered_prop.replace('.n_clicks', '')
-                # Parse the pattern-matching ID
-                import ast
-                file_info = ast.literal_eval(id_str)
-                filepath = file_info['index']
-                logging.info(f"Log file clicked for summary: {filepath}")
-                return filepath
-        except Exception as e:
-            logging.error(f"Error parsing clicked file ID: {e}")
-            logging.error(f"Triggered prop: {triggered_prop}")
-
-        raise exceptions.PreventUpdate
+    def update_summary_selection(selected_file):
+        if selected_file:
+             logging.info(f"Log file selected for summary: {selected_file}")
+             return selected_file
+        return dash.no_update
 
     # Load and display summary statistics
     @app.callback(
