@@ -320,6 +320,7 @@ def create_dashboard_layout():
     ], className="main-container"),
     html.Div(id="notification-sidebar", className="notification-sidebar", children=[
         html.H3("Notifications", className="sidebar-title"),
+        html.Button("Clear All", id="clear-notifications-btn", className="clear-notifications-btn", style={'marginBottom': '10px', 'width': '100%', 'backgroundColor': '#c0392b', 'color': 'white', 'border': 'none', 'padding': '5px', 'borderRadius': '3px', 'cursor': 'pointer'}),
         html.Div(id="notification-container", className="notification-list")
     ])
 

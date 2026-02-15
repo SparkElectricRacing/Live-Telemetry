@@ -108,7 +108,83 @@ Users can save their custom layouts for future use or sharing.
     ]
     ```
 
-## 9. Design System
+## 9. Data Flow Diagram
+This diagram illustrates how data moves from the backend telemetry source to the frontend components.
+
+```mermaid
+flowchart TD
+    subgraph Backend ["Backend (Python/Flask)"]
+        TR[TelemetryReceiver] -->|Polls/Generates| Data[Raw Data]
+        Data -->|Push| Q[Data Queue]
+    end
+
+    subgraph Frontend ["Frontend (Dash/React)"]
+        Interval[Interval Component] -->|Trigger 1s| CB_Store[Callback: update_store]
+        
+        Q -.->|Pull| CB_Store
+        CB_Store -->|JSON| Store[dcc.Store: telemetry-store]
+        
+        Store -->|Update| Gauges[Gauges & Charts]
+        Store -->|Update| Map[GPS Map]
+        Store -->|Update| Notif[Notification Logic]
+        
+        subgraph Interactivity ["Interactivity"]
+            User[User] -->|Click| Toggle[Sidebar Toggle]
+            Toggle -->|Client-Side| Resize[Map Resize Event]
+            Toggle -->|Client-Side| Read[Mark as Read]
+            
+            Notif -->|New Alert| Badge[Unread Badge]
+            Read -->|Clear| Badge
+        end
+    end
+```
+
+## 10. State Schema Reference
+For a technical review, understanding the data structure in the client-side stores is crucial.
+
+### `telemetry-store`
+The central state object containing timeseries data for all metrics.
+```json
+{
+  "timestamp": ["2024-01-01T10:00:00", "2024-01-01T10:00:01"],
+  "speedMPH": [45.5, 46.0],
+  "pack_voltage": [380.1, 379.8],
+  "pack_SOC": [85.5, 85.4],
+  "gps_lat": [33.5, 33.5001],
+  "gps_lon": [-86.6, -86.6001],
+  "...": "..."
+}
+```
+
+### `notification-state`
+Tracks the last time an alert was triggered to manage cooldowns.
+```json
+{
+  "pack_SOC_low": 1715000000.123,  // Unix Timestamp
+  "max_cell_temp_high": 1715000010.456
+}
+```
+
+### `layout-config-store`
+Defines the structure of the custom dashboard view.
+```json
+{
+  "rows": [
+    {
+      "id": "uuid-row-1",
+      "columns": [
+        {
+          "id": "uuid-col-1",
+          "variable": "speedMPH",
+          "chart": "gauge"
+        }
+      ]
+    }
+  ]
+}
+```
+
+## 11. Design System
 The dashboard employs a **Performance-Focused Dark Theme** designed for high contrast and readability in various lighting conditions (e.g., pit lane, trackside).
 
 ### Color Palette
@@ -135,7 +211,7 @@ The dashboard employs a **Performance-Focused Dark Theme** designed for high con
 -   **Shadows**: Subtle drop shadows (`0 8px 32px 0 rgba(0, 0, 0, 0.37)`) provide depth and separation.
 -   **Responsiveness**: The layout uses CSS Grid and Flexbox to adapt to different screen sizes, ensuring the sidebar and main content scale correctly.
 
-## 10. Performance Optimization
+## 12. Performance Optimization
 To ensure real-time performance (10-20Hz updates), the dashboard implements several optimizations:
 
 -   **Client-Side Callbacks**: Critical UI updates (like the sidebar toggle, map resizing, and notification badge logic) are handled entirely in the browser via JavaScript. This reduces server load and network latency.
@@ -143,7 +219,7 @@ To ensure real-time performance (10-20Hz updates), the dashboard implements seve
 -   **Throttling**: The `update_interval` is tuned to balance responsiveness with CPU usage. Visuals update slightly slower than the backend data ingestion to prevent rendering lag.
 -   **Vector Graphics**: Icons (like the Bell) use SVG masks instead of raster images for crisp scaling and zero pixelation.
 
-## 11. Project Structure
+## 13. Project Structure
 The codebase is organized for modularity and maintainability:
 
 ```text
@@ -163,7 +239,7 @@ dashboard_app/
 └── dashboard_documentation.md # This file
 ```
 
-## 12. Setup & Deployment
+## 14. Setup & Deployment
 ### Requirements
 -   Python 3.8+
 -   Dependencies: `dash`, `dash-bootstrap-components`, `pandas`, `plotly`, `dash-leaflet`

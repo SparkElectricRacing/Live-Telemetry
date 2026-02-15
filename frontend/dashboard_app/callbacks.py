@@ -666,11 +666,12 @@ def register_all_callbacks(app, telemetry_receiver):
     # --- NEW: Close Notification Callback ---
     @app.callback(
         Output('notification-container', 'children', allow_duplicate=True),
-        Input({'type': 'notification-close', 'index': ALL}, 'n_clicks'),
+        Input({'type': 'close-notification', 'index': ALL}, 'n_clicks'),
+        Input('clear-notifications-btn', 'n_clicks'),
         State('notification-container', 'children'),
         prevent_initial_call=True
     )
-    def remove_notification(n_clicks, current_children):
+    def remove_notification(close_clicks, clear_clicks, current_children):
         ctx = dash.callback_context
         if not ctx.triggered:
             return dash.no_update
@@ -681,37 +682,44 @@ def register_all_callbacks(app, telemetry_receiver):
                   return dash.no_update
 
              triggered_id = ctx.triggered_id
+             
+             # Check if Clear All was clicked
+             if triggered_id == 'clear-notifications-btn':
+                 logging.info("Clear All Notifications clicked")
+                 return []
+             
              # If for some reason it's not a dict (should be with pattern matching)
              if not isinstance(triggered_id, dict):
                  return dash.no_update
              
-             # Check if the specific component that triggered has n_clicks > 0
-             # n_clicks is a list of all matching components' n_clicks
-             # We need to find the one corresponding to triggered_id
+             # Check of n_clicks valid
+             # With pattern matching callbacks, ctx.triggered is a list
+             # We need to ensure the click count is valid (>0)
              
-             # Actually, simpler approach:
-             # With pattern matching callbacks, we can look at ctx.triggered again
-             # It contains 'value' which is the n_clicks
-             triggered_value = ctx.triggered[0]['value']
+             # Find which input triggered it
+             # ctx.triggered[0] is usually safe for single triggers
+             prop_id = ctx.triggered[0]['prop_id']
+             value = ctx.triggered[0]['value']
              
-             if not triggered_value or triggered_value == 0:
+             if not value or value == 0:
                  return dash.no_update
 
              note_id = triggered_id['index']
-             toast_id_to_remove = f"toast-{note_id}"
+             target_id = {'type': 'notification-item', 'index': note_id}
              
              if not current_children:
                  return dash.no_update
              
              # Filter out the toast with the matching ID
-             new_children = []
-             for child in current_children:
-                 # Check if child is a dict and has props
-                 if isinstance(child, dict) and 'props' in child:
-                     if child['props'].get('id') != toast_id_to_remove:
-                         new_children.append(child)
-                 else:
-                     new_children.append(child)
+             # Use direct dictionary comparison now that we construct target_id correctly
+             new_children = [
+                 child for child in current_children 
+                 if not (
+                     isinstance(child, dict) and 
+                     'props' in child and 
+                     child['props'].get('id') == target_id
+                 )
+             ]
              
              return new_children
              
