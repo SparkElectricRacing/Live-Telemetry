@@ -1,7 +1,12 @@
 import serial # pyserial
 import time
 import os
-from . import global_vars as gv
+try:
+    # for the server from the root directory
+    from backend import global_vars as gv
+except (ImportError, ModuleNotFoundError):
+    # for running arduino_reader.py directly for testing
+    import global_vars as gv
 
 def avg_temp(data):
     # static_cast<int>(frame->data[1])
@@ -38,6 +43,8 @@ def raw_rpm(data):
 
 def rpm_speed(raw_rpm):
     # int16_t rpmSpeed = -1 * static_cast<int16_t>(raw_rpm); // masking off the sign bit
+    if raw_rpm > 32767: #for testing files 
+        raw_rpm -= 65536
     return -1*raw_rpm
 def mph_speed(rpm_speed): # Adapted from the google docs
     FRONT_SPROCKET_TEETH = 16.0
