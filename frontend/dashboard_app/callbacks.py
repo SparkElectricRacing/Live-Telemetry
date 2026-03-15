@@ -605,16 +605,17 @@ def register_all_callbacks(app, telemetry_receiver):
         Output('current-lap-display', 'children'),
         Output('last-lap-display', 'children'),
         Output('best-lap-display', 'children'),
+        Output('avg-lap-display', 'children'),
         Input('telemetry-store', 'data'),
         State('lap-timing-store', 'data')
     )
     def update_lap_timing(telemetry_data, lap_data):
         # We need telemetry data and a finish line set
         if not telemetry_data or not lap_data.get('finish_line_lat'):
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
             
         if 'gps_lat' not in telemetry_data or len(telemetry_data['gps_lat']) == 0:
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
             
         current_lat = telemetry_data['gps_lat'][-1]
         current_lon = telemetry_data['gps_lon'][-1]
@@ -663,12 +664,14 @@ def register_all_callbacks(app, telemetry_receiver):
         current_lap_time = current_time - lap_data['current_lap_start']
         
         last_lap_val = lap_data['lap_times'][-1] if lap_data['lap_times'] else None
+        avg_lap_val = sum(lap_data['lap_times']) / len(lap_data['lap_times']) if lap_data['lap_times'] else None
         
         return (
             lap_data,
             format_lap_time(current_lap_time),
             format_lap_time(last_lap_val),
-            format_lap_time(lap_data['best_lap'])
+            format_lap_time(lap_data['best_lap']),
+            format_lap_time(avg_lap_val)
         )
 
     # --- NEW: Notification Callback ---

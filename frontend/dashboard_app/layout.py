@@ -87,6 +87,10 @@ def create_dashboard_layout():
                             html.Div([
                                 html.Div("Best Lap:", style={'color': '#aaa', 'fontSize': '12px'}),
                                 html.Div("--:--.--", id="best-lap-display", style={'fontSize': '20px', 'fontWeight': 'bold', 'fontFamily': 'monospace', 'color': '#2ecc71'})
+                            ], style={'flex': '1'}),
+                            html.Div([
+                                html.Div("Avg Lap:", style={'color': '#aaa', 'fontSize': '12px'}),
+                                html.Div("--:--.--", id="avg-lap-display", style={'fontSize': '20px', 'fontWeight': 'bold', 'fontFamily': 'monospace', 'color': '#3498db'})
                             ], style={'flex': '1'})
                         ], style={'display': 'flex', 'justifyContent': 'space-between', 'marginTop': '15px', 'textAlign': 'center'}),
                         
