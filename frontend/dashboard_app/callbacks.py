@@ -544,6 +544,133 @@ def register_all_callbacks(app, telemetry_receiver):
         # Default dummy position if no data
         return [33.53250, -86.61889]
 
+    # --- NEW: Lap Timing Callbacks ---
+    import math
+
+    def haversine(lat1, lon1, lat2, lon2):
+        """Calculate the great circle distance in meters between two points on the earth."""
+        R = 6371000  # Radius of earth in meters
+        phi1 = math.radians(lat1)
+        phi2 = math.radians(lat2)
+        delta_phi = math.radians(lat2 - lat1)
+        delta_lambda = math.radians(lon2 - lon1)
+
+        a = math.sin(delta_phi / 2.0) ** 2 + \
+            math.cos(phi1) * math.cos(phi2) * \
+            math.sin(delta_lambda / 2.0) ** 2
+        
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+        distance = R * c
+        return distance
+
+    def format_lap_time(ms):
+        """Format milliseconds into MM:SS.ms"""
+        if ms is None:
+            return "--:--.--"
+        total_seconds = ms / 1000.0
+        minutes = int(total_seconds // 60)
+        seconds = int(total_seconds % 60)
+        hundredths = int((total_seconds * 100) % 100)
+        return f"{minutes:02d}:{seconds:02d}.{hundredths:02d}"
+
+    @app.callback(
+        Output('lap-timing-store', 'data', allow_duplicate=True),
+        Output('finish-line-status', 'children'),
+        Input('set-finish-line-btn', 'n_clicks'),
+        State('telemetry-store', 'data'),
+        State('lap-timing-store', 'data'),
+        prevent_initial_call=True
+    )
+    def set_finish_line(n_clicks, telemetry_data, lap_data):
+        if not n_clicks or not telemetry_data:
+            return dash.no_update, "No data available"
+            
+        if 'gps_lat' in telemetry_data and 'gps_lon' in telemetry_data and len(telemetry_data['gps_lat']) > 0:
+            lat = telemetry_data['gps_lat'][-1]
+            lon = telemetry_data['gps_lon'][-1]
+            
+            lap_data['finish_line_lat'] = lat
+            lap_data['finish_line_lon'] = lon
+            lap_data['current_lap_start'] = None
+            lap_data['lap_times'] = []
+            lap_data['best_lap'] = None
+            lap_data['last_distance'] = None
+            
+            return lap_data, f"Line set at {lat:.5f}, {lon:.5f}"
+        
+        return dash.no_update, "No GPS data to set line"
+
+    @app.callback(
+        Output('lap-timing-store', 'data'),
+        Output('current-lap-display', 'children'),
+        Output('last-lap-display', 'children'),
+        Output('best-lap-display', 'children'),
+        Input('telemetry-store', 'data'),
+        State('lap-timing-store', 'data')
+    )
+    def update_lap_timing(telemetry_data, lap_data):
+        # We need telemetry data and a finish line set
+        if not telemetry_data or not lap_data.get('finish_line_lat'):
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            
+        if 'gps_lat' not in telemetry_data or len(telemetry_data['gps_lat']) == 0:
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            
+        current_lat = telemetry_data['gps_lat'][-1]
+        current_lon = telemetry_data['gps_lon'][-1]
+        timestamp_str = telemetry_data['timestamp'][-1]
+        
+        try:
+            current_time = datetime.fromisoformat(timestamp_str).timestamp() * 1000 # convert to ms
+        except ValueError:
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            
+        finish_lat = lap_data['finish_line_lat']
+        finish_lon = lap_data['finish_line_lon']
+        
+        # Calculate distance to finish line
+        distance = haversine(current_lat, current_lon, finish_lat, finish_lon)
+        radius_threshold = 50.0 # meters
+        
+        # Initialize lap start if not set
+        if lap_data['current_lap_start'] is None:
+            # We must leave the finish line radius first
+            if distance > radius_threshold * 1.5:
+               lap_data['current_lap_start'] = current_time
+            else:
+               return dash.no_update, "Waiting to leave finish line...", dash.no_update, dash.no_update
+                
+        # Check for lap completion
+        last_dist = lap_data.get('last_distance')
+        if last_dist is not None:
+            # We entered the radius and are now moving away (distance increasing)
+            if distance <= radius_threshold and distance > last_dist:
+                # We crossed the line.
+                lap_time_ms = current_time - lap_data['current_lap_start']
+                
+                # Prevent micro-laps (e.g., stopping on the line) -> minimum lap time 3s
+                if lap_time_ms > 3000:
+                    lap_data['lap_times'].append(lap_time_ms)
+                    if lap_data['best_lap'] is None or lap_time_ms < lap_data['best_lap']:
+                        lap_data['best_lap'] = lap_time_ms
+                        
+                    lap_data['current_lap_start'] = current_time # Reset start time
+        
+        # Always update last_distance for next tick
+        lap_data['last_distance'] = distance
+        
+        # Calculate current time
+        current_lap_time = current_time - lap_data['current_lap_start']
+        
+        last_lap_val = lap_data['lap_times'][-1] if lap_data['lap_times'] else None
+        
+        return (
+            lap_data,
+            format_lap_time(current_lap_time),
+            format_lap_time(last_lap_val),
+            format_lap_time(lap_data['best_lap'])
+        )
+
     # --- NEW: Notification Callback ---
     @app.callback(
         Output('notification-container', 'children'),

@@ -51,6 +51,12 @@ class TelemetryReceiver:
         self.mock_danger_mode = False
         self.mock_danger_timer = 0
         
+        # Mock Track Data (Simulated oval track around central point)
+        self.track_center_lat = 33.53250
+        self.track_center_lon = -86.61889
+        self.track_radius_deg = 0.001 # smaller oval to trigger laps reliably
+        self.mock_angle = 0.0
+        
     def test_api_connection(self):
         """Test if the API is available"""
         try:
@@ -239,6 +245,15 @@ class TelemetryReceiver:
         self.mock_soc -= random.uniform(0.1, 0.3) # Much faster drain
         if self.mock_soc < 0: self.mock_soc = 100
         
+        # Move mock GPS in a circle
+        # Speed affects angular velocity. Let's say max speed (140mph) is 0.1 rad/sec.
+        angular_velocity = (max(self.mock_speed, 10) / 140.0) * 0.1
+        self.mock_angle = (self.mock_angle + angular_velocity) % (2 * 3.14159)
+        
+        import math
+        mock_lat = self.track_center_lat + (self.track_radius_deg * math.sin(self.mock_angle))
+        mock_lon = self.track_center_lon + (self.track_radius_deg * 2.0 * math.cos(self.mock_angle))
+        
         return {
             'timestamp': datetime.now().isoformat(),
             'speedMPH': max(0, self.mock_speed),
@@ -252,8 +267,8 @@ class TelemetryReceiver:
             'max_cell_temp': self.mock_temp + 5,
             'is_charging': random.choice([True, False]),
             'DTC1': 0,
-            'gps_lat': 33.53250 + random.uniform(-0.0005, 0.0005),
-            'gps_lon': -86.61889 + random.uniform(-0.0005, 0.0005)
+            'gps_lat': mock_lat,
+            'gps_lon': mock_lon
         }
     
     def fetch_api_data(self) -> Optional[Dict[str, Any]]:

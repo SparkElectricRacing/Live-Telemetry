@@ -47,25 +47,57 @@ def create_dashboard_layout():
 
         # GPS Map Section (Moved to Top)
         html.Div([
-            html.H3("GPS Location", className="section-title"),
+            html.H3("GPS Location & Lap Timing", className="section-title"),
             html.Div([
-                dl.Map(center=[33.53250, -86.61889], zoom=15, children=[
-                    dl.TileLayer(),
-                    dl.DivMarker(
-                        position=[33.53250, -86.61889], 
-                        id="gps-marker", 
-                        iconOptions={
-                            "className": "gps-puck-wrapper",
-                            "html": '<div class="gps-puck"></div>',
-                            "iconSize": [24, 24],
-                            "iconAnchor": [12, 12]
-                        },
-                        children=[
-                            dl.Tooltip("Current Location")
-                        ]
-                    )
-                ], style={'width': '100%', 'height': '400px'}, id="gps-map"),
-            ], className="map-container")
+                # Left Side: Map
+                html.Div([
+                    dl.Map(center=[33.53250, -86.61889], zoom=15, children=[
+                        dl.TileLayer(),
+                        dl.DivMarker(
+                            position=[33.53250, -86.61889], 
+                            id="gps-marker", 
+                            iconOptions={
+                                "className": "gps-puck-wrapper",
+                                "html": '<div class="gps-puck"></div>',
+                                "iconSize": [24, 24],
+                                "iconAnchor": [12, 12]
+                            },
+                            children=[
+                                dl.Tooltip("Current Location")
+                            ]
+                        )
+                    ], style={'width': '100%', 'height': '400px'}, id="gps-map"),
+                ], className="map-container", style={'flex': '2'}),
+                
+                # Right Side: Lap Timing Panel
+                html.Div([
+                    html.Div([
+                        html.H4("Lap Timing", style={'color': '#ffd700', 'textAlign': 'center', 'marginBottom': '15px'}),
+                        
+                        html.Div([
+                            html.Div("Current Lap:", style={'color': '#aaa', 'fontSize': '14px'}),
+                            html.Div("00:00.00", id="current-lap-display", style={'fontSize': '32px', 'fontWeight': 'bold', 'fontFamily': 'monospace', 'marginBottom': '10px'})
+                        ], style={'textAlign': 'center', 'backgroundColor': 'rgba(0,0,0,0.3)', 'padding': '10px', 'borderRadius': '10px'}),
+                        
+                        html.Div([
+                            html.Div([
+                                html.Div("Last Lap:", style={'color': '#aaa', 'fontSize': '12px'}),
+                                html.Div("--:--.--", id="last-lap-display", style={'fontSize': '20px', 'fontWeight': 'bold', 'fontFamily': 'monospace'})
+                            ], style={'flex': '1'}),
+                            html.Div([
+                                html.Div("Best Lap:", style={'color': '#aaa', 'fontSize': '12px'}),
+                                html.Div("--:--.--", id="best-lap-display", style={'fontSize': '20px', 'fontWeight': 'bold', 'fontFamily': 'monospace', 'color': '#2ecc71'})
+                            ], style={'flex': '1'})
+                        ], style={'display': 'flex', 'justifyContent': 'space-between', 'marginTop': '15px', 'textAlign': 'center'}),
+                        
+                        html.Div([
+                            html.Button("Set Start/Finish Line", id="set-finish-line-btn", n_clicks=0, className="control-btn", style={'width': '100%', 'marginTop': '20px', 'backgroundColor': '#ffd700', 'color': '#000', 'fontWeight': 'bold'}),
+                            html.Div(id="finish-line-status", style={'fontSize': '12px', 'color': '#aaa', 'marginTop': '5px', 'textAlign': 'center'})
+                        ])
+                    ], style={'padding': '20px', 'height': '100%', 'display': 'flex', 'flexDirection': 'column', 'justifyContent': 'center'})
+                ], className="lap-timing-container", style={'flex': '1', 'backgroundColor': 'rgba(30, 35, 41, 0.6)', 'borderRadius': '15px', 'marginLeft': '15px'})
+                
+            ], style={'display': 'flex'})
         ], className="map-section"),
 
         # Row 1: Speed, RPM, and Battery Voltage
@@ -309,6 +341,14 @@ def create_dashboard_layout():
         dcc.Store(id='file-action-store'),
         dcc.Store(id='selected-log-for-summary'),  # Store for selected log file
         dcc.Store(id='notification-state', data={}), # Store for notification history
+        dcc.Store(id='lap-timing-store', data={ # Store for Lap Timing
+            'finish_line_lat': None,
+            'finish_line_lon': None,
+            'current_lap_start': None,
+            'lap_times': [],
+            'best_lap': None,
+            'last_distance': None # To determine if moving closer/further
+        }),
         html.Div(id='delete-trigger', style={'display': 'none'}),
         
         # Notification Container (Moved to sidebar)
