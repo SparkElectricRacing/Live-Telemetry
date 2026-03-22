@@ -113,29 +113,73 @@ This diagram illustrates how data moves from the backend telemetry source to the
 
 ```mermaid
 flowchart TD
-    subgraph Backend ["Backend (Python/Flask)"]
-        TR[TelemetryReceiver] -->|Polls/Generates| Data[Raw Data]
-        Data -->|Push| Q[Data Queue]
+    %% Styling and coloring to resemble block architecture
+    classDef hardware fill:#D9534F,stroke:#333,stroke-width:1px,color:#fff;
+    classDef file fill:#9980DB,stroke:#333,stroke-width:1px,color:#fff;
+    classDef bgThread fill:#ce6c5d,stroke:#333,stroke-width:1px,color:#fff;
+    classDef endpoint fill:#e67e22,stroke:#333,stroke-width:1px,color:#fff;
+    classDef app fill:#1abc9c,stroke:#333,stroke-width:1px,color:#fff;
+    classDef queue fill:#f1c40f,stroke:#333,stroke-width:1px,color:#333;
+
+    subgraph Legend ["Diagram Key"]
+        direction TB
+        L1["Hardware / Device"]:::hardware
+        L3["Log Files / Binaries"]:::file
+        L2["Background Thread / Parser"]:::bgThread
+        L4["Endpoint / Event Handler"]:::endpoint
+        L5["Queues / Stores"]:::queue
+        L6["UI Frontend / View"]:::app
     end
 
-    subgraph Frontend ["Frontend (Dash/React)"]
-        Interval[Interval Component] -->|Trigger 1s| CB_Store[Callback: update_store]
+    %% Data Sources
+    Arduino["Arduino Serial Port"]:::hardware
+    TestBin["test_can_data.bin"]:::file
+    LogFiles["telemetry_LOG.log"]:::file
+    
+    subgraph Backend ["FastAPI Backend (Data Engine)"]
+        Reader["<b>Arduino Reader (Thread)</b><br/>1. Reads 24-byte packet over Serial<br/>2. Extracts CAN ID & Sub ID<br/>3. Converts raw bits to physical units"]:::bgThread
+        Buffer[("<b>global_vars.buffer</b><br/>(queue)")]:::queue
+        API["<b>FastAPI Endpoint (/data/receive)</b><br/>1. Drains the buffer queue on GET request<br/>2. Aggregates data by signal type<br/>3. Formats to JSON arrays"]:::endpoint
+    end
+    
+    subgraph Frontend ["Dash Frontend (Data Consumption)"]
+        Receiver["<b>Telemetry Receiver (Thread)</b><br/>1. Polls Backend API (or mocks data)<br/>2. Writes incoming data to Log file<br/>3. Pushes into Data Queue"]:::bgThread
+        FrontQueue[("<b>Data Queue</b><br/>(queue.Queue)")]:::queue
+        Callbacks["<b>Dash Callbacks (Interval Timer)</b><br/>1. Triggers every 50ms<br/>2. Drains the Data Queue<br/>3. Appends data to Dash Store<br/>4. Processes Danger / Lap logic"]:::endpoint
+        DashStore[("<b>telemetry-store</b><br/>(dcc.Store)")]:::queue
+    end
+    
+    UI["<b>UI Components (Web Browser)</b><br/>1. GPS Map & Puck<br/>2. Gauges & Charts<br/>3. Danger Alerts"]:::app
+    User((User))
+
+    %% Connections
+    Legend ~~~ Arduino
+    
+    Arduino -.->|Live CAN Data| Reader
+    TestBin -.->|Mock Binary Data| Reader
+    
+    Reader -->|Parsed Entry Array| Buffer
+    Buffer -->|Consumed Batch| API
+    
+    API ==>|HTTP GET JSON| Receiver
+    LogFiles -.->|Playback Mode| Receiver
+    Receiver -.->|Write standardized JSON| LogFiles
+    
+    Receiver -->|Push parsed dict| FrontQueue
+    FrontQueue -->|Pull Data| Callbacks
+    
+    Callbacks -->|Update state| DashStore
+    DashStore --> UI
+    
+    %% Interactivity Subgraph (Retained from original)
+    subgraph Interactivity ["UI Interactivity"]
+        User -->|Click| Toggle[Sidebar Toggle]
+        Toggle -->|Client-Side| Resize[Map Resize Event]
+        Toggle -->|Client-Side| Read[Mark as Read]
         
-        Q -.->|Pull| CB_Store
-        CB_Store -->|JSON| Store[dcc.Store: telemetry-store]
-        
-        Store -->|Update| Gauges[Gauges & Charts]
-        Store -->|Update| Map[GPS Map]
-        Store -->|Update| Notif[Notification Logic]
-        
-        subgraph Interactivity ["Interactivity"]
-            User[User] -->|Click| Toggle[Sidebar Toggle]
-            Toggle -->|Client-Side| Resize[Map Resize Event]
-            Toggle -->|Client-Side| Read[Mark as Read]
-            
-            Notif -->|New Alert| Badge[Unread Badge]
-            Read -->|Clear| Badge
-        end
+        DashStore -->|Triggers| Notif[Notification Logic]
+        Notif -->|New Alert| Badge[Unread Badge]
+        Read -->|Clear| Badge
     end
 ```
 
