@@ -110,7 +110,7 @@ def parse_in(inp):
         timestamp = (inp >> 72) & 0xFFFFFFFF # 4 byte
         subId = (inp >> 104) & 0xFF
         canId = (inp >> 112) & 0xFF
-        gps_lat = (inp >> 120) & 0xFFFFFFFF # 4 byte ?This is backwards compared to above
+        gps_lat = (inp >> 120) & 0xFFFFFFFF # 4 byte ?This is backwards compared to comment above 
         gps_long = (inp >> 152) & 0xFFFFFFFF # 4 byte
         hcSanValA = (inp >> 184) & 0xFF
         signal_name = SIGNALS.get((canId, subId), "")
@@ -124,22 +124,21 @@ def parse_in(inp):
         return 0, "", 0, 0, 0, 0, 0
 
 def read_from_arduino(port_name, baud_rate):
-    if(port_name == "not_a_port"): #for tester file's
+    if port_name == "not_a_port":
         script_dir = os.path.dirname(__file__)
         file_path = os.path.join(script_dir, "test_can_data.bin")
         with open(file_path, "rb") as test_data:
             try:
                 while True:
-                    #reads one packet (24 bytes)
                     line = test_data.read(24)
-                    #checks end of file and loops to start
                     if len(line) < 24:
                         print("Looping...")
                         test_data.seek(0)
                         time.sleep(1)
                         continue
-                        
-                    #handles data
+                    if line[0] != 0xBB or line[-1] != 0x9A:
+                        print("Packet misalignment detected, resyncing...")
+                        continue
                     hcSanValA, signal_name, timestamp, data, gps_long, gps_lat, hcSanValB = parse_in(line)
                     if signal_name == "raw_rpm":
                         rpmSpeed = rpm_speed(data)
@@ -151,8 +150,7 @@ def read_from_arduino(port_name, baud_rate):
                     else:
                         entry = [hcSanValA, signal_name, timestamp, data, gps_long, gps_lat, hcSanValB]
                         gv.buffer.put(entry)
-                    #1 second delay
-                    time.sleep(.1)
+                    time.sleep(0.1)
             except KeyboardInterrupt:
                 print("Exiting...")
     else: #real arduino input
