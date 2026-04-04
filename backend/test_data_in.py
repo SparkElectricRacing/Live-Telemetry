@@ -1,10 +1,12 @@
+#!/usr/bin/env python3
 # goal is to receive CAN Messages
 # will receive the ones animesh sends and then
 # will check their format
 # then will try to make sure in good format for use
 # then send thru to the backend as our input data
+import sys
 from PySide6.QtSerialBus import QCanBus, QCanBusDevice
-from PySide6.QtCore import QObject, Slot
+from PySide6.QtCore import QObject, Slot, QCoreApplication
 
 # To test:
 
@@ -17,9 +19,6 @@ from PySide6.QtCore import QObject, Slot
 # Then run the CAN Testbench - be sure to open that env in sep terminal first and dl everything
 # ./GUI.py
 
-
-
-
 # CANBus class
 class CANBus():
     
@@ -30,7 +29,7 @@ class CANBus():
         # if want real input then rly we are not using this file - will instead connect to the
         # bike via arduino. Antenna will send msg thru to arduino we plug into computer and then
         # that data will go thru to the backend and populate frontend
-        self.device, self.error = QCanBus.createDevice("socketcan", "vcan0")
+        self.device, self.error = QCanBus.instance().createDevice("socketcan", "vcan0")
         if not self.device.connectDevice():
             print("failed to initialise connection with device")
         # now device must be connected
@@ -41,4 +40,13 @@ class CANBus():
     def frame_receiver(self):
         while self.device.framesAvailable():
             frame = self.device.readFrame()
+            # We get here so are receiving messages.
             print(frame.toString())
+            # we need to add a timestamp
+            
+            
+if __name__ == "__main__":
+    app = QCoreApplication(sys.argv)
+    c1 = CANBus()
+    sys.exit(app.exec())
+    
