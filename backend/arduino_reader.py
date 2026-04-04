@@ -3,7 +3,7 @@ import time
 import os
 try:
     # for the server from the root directory
-    from backend import global_vars as gv
+    from backend import global_vars as gv  
 except (ImportError, ModuleNotFoundError):
     # for running arduino_reader.py directly for testing
     import global_vars as gv
@@ -124,6 +124,7 @@ def parse_in(inp):
         return 0, "", 0, 0, 0, 0, 0
 
 def read_from_arduino(port_name, baud_rate):
+    gv.t_in = time.perf_counter()
     if port_name == "not_a_port":
         script_dir = os.path.dirname(__file__)
         file_path = os.path.join(script_dir, "test_can_data.bin")
@@ -140,6 +141,7 @@ def read_from_arduino(port_name, baud_rate):
                         print("Packet misalignment detected, resyncing...")
                         continue
                     hcSanValA, signal_name, timestamp, data, gps_long, gps_lat, hcSanValB = parse_in(line)
+                    gv.curr_thru+=1
                     if signal_name == "raw_rpm":
                         rpmSpeed = rpm_speed(data)
                         entry = [hcSanValA, "rpm_speed", timestamp, rpmSpeed, gps_long, gps_lat, hcSanValB]

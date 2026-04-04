@@ -2,3 +2,4 @@ pandas
 dash
 serial
 fastapi
+dash_leaflet

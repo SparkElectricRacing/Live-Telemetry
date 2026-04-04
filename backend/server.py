@@ -3,6 +3,8 @@ from . import global_vars as gv
 from .arduino_reader import read_from_arduino
 import threading
 from queue import Empty
+import time
+import numpy as np
 
 app = FastAPI()
 
@@ -80,5 +82,12 @@ async def read_root():
                 #     "Time": type_info["Time"](row[2]),
                 #     "Data": type_info["Data"](row[3])
                 # })
+    gv.t_out = time.perf_counter()
+    gv.latencies_ms.append((gv.t_out - gv.t_in) * 1000)
+    gv.throughput.append((gv.curr_thru))
+    print("latency:", (gv.t_out - gv.t_in) * 1000, "|| throughput:", gv.curr_thru)
+    mean = np.mean(np.array(gv.latencies_ms))
+    print("average latency is:", mean, "and average throughput is:", gv.curr_thru)
+    gv.curr_thru = 0
     return signals
 
