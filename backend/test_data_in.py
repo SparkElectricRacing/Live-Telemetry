@@ -7,11 +7,11 @@
 import sys
 import signal
 import time
-# import serial # for writing our data to the backend of the Live-Telemetry project
+import serial # for writing our data to the backend of the Live-Telemetry project
 from PySide6.QtSerialBus import QCanBus, QCanBusDevice
 from PySide6.QtCore import QObject, Slot, QCoreApplication
 
-# To test:
+# To test (linux pls):
 
 # sudo modprobe vcan
 # sudo ip link add dev vcan0 type vcan
@@ -42,6 +42,7 @@ class CANBus():
             self.device.framesReceived.connect(self.frame_receiver)
             # what this means is that whenever we receive a frame, we automatically have it handled by our frame_receiver
             # no while loops needed and no busy waiting!
+            # self.ser = serial.Serial('/dev/ttyUSB0', baudrate=115200, timeout=None) # idk on port i just picked smth i saw online will fix
             self.boot_time = time.time_ns() // 1000000 # in milliseconds
     # This func is called whenever we receive a frame
     @Slot()
@@ -62,8 +63,10 @@ class CANBus():
             payload = f"{int(frame.payload().toHex().toUpper().data().decode(), 16):016X}" # make this into 8byte
             # in milliseconds and relative to start time of the testing tool
             timestamp = f"{(((frame.timeStamp().seconds()*1000000 + frame.timeStamp().microSeconds()) // 1000)-self.boot_time):08X}" 
-            sendable = "9A" +payload + frameId + timestamp + "BB" #18 bytes goal
+            sendable = bin(int(("9A" +payload + frameId + timestamp + "BB"), 16))[2:].zfill(36*4) #18 bytes goal so 36 length * 4 for conversion
             print(sendable)
+            print(len(sendable))
+            # ser.write(sendable)
             
             
 if __name__ == "__main__":
