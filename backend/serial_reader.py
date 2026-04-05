@@ -1,8 +1,10 @@
-
+#!/usr/bin/env python3
 import time
 import os
+import signal
+import sys
+import serial
 from queue import Queue
-from PySide6.QtSerialPort import QSerialPort, QSerialPortInfo
 from PySide6.QtSerialBus import QCanBus, QCanBusDevice, QCanBusFrame, QCanDbcFileParser
 from PySide6.QtCore import QObject, Slot, QCoreApplication, QIODevice
 
@@ -34,32 +36,46 @@ def mph_speed(rpm_speed): # Adapted from the google docs
 class Serial_receiver():
     def __init__(self):
         self.buffer = ''
-        self.ser = QSerialPort('/dev/pts/2')
-        self.ser.setBaudRate(115200)
-        if (not self.ser.open(QIODevice.ReadyOnly)):
-            print("nope")
-            return 1
-        self.ser.readyRead().connect(self.handler)
-        
-    @Slot()
-    def handler(self):
-        self.buffer = self.ser.readAll()
+        try:
+            self.ser = serial.Serial('/dev/ttyV0', 115200, rtscts=True,dsrdtr=True)
+        except serial.SerialException as e:
+            print(e)
+            return
+        while True:
+            if self.ser.in_waiting:
+                # print("did i make it dad", self.ser.in_waiting)
+                bits = (self.ser.in_waiting // (36)) * 36
+                # print("I made it dad", bits)
+                self.handler(bits)
+            time.sleep(0.01) 
+            # criminal acitvities btw if you can make something that on in_waiting > 0 you trigger handler then do that
+    
+    def handler(self, bits):
+        # print('in handler')
+        self.buffer = self.ser.read(bits).hex()
+        # print(self.buffer)
         # buffer is a string - so basically get buffer length
-        buf_size = self.buffer.length()
-        msgs = buf_size // 18
-        remainder = buf_size % 18
-        msg_queue = Queue()
-        for i in range(msgs):
-            msg_queue.put(buffer.substr(i*18, 18))
-        buffer = buffer.substr(msgs*18, remainder)
-        
-        # now make a BUNCH of frames
-        # 1 + 8 + 4 + 4 + 1 but rn all are 8 bits a byte
-        # frameId = f"{frame.frameId():08X}"
-        # payload = f"{int(frame.payload().toHex().toUpper().data().decode(), 16):016X}" # make this into 8byte
-        # timestamp = f"{(((frame.timeStamp().seconds()*1000000 + frame.timeStamp().microSeconds()) // 1000)-self.boot_time):08X}" 
-        # sendable = bin(int(("9A" +payload + frameId + timestamp + "BB"), 16))[2:].zfill(36*4)
-        while (not msq_queue.empty()):
-            msg = int((msg_queue.get()).substr(), 2)
-            msg = hex(msg)
-            print(msg)
+        buf_size = len(self.buffer)
+        if buf_size:
+            msgs = buf_size // (36)
+            remainder = buf_size % (36)
+            msg_queue = Queue()
+            for i in range(msgs):
+                msg_queue.put(self.buffer[i*36:(i+1)*36])
+            self.buffer = b''
+            
+            # now make a BUNCH of frames
+            # 1 + 8 + 4 + 4 + 1 but rn all are 8 bits a byte
+            # frameId = f"{frame.frameId():08X}"
+            # payload = f"{int(frame.payload().toHex().toUpper().data().decode(), 16):016X}" # make this into 8byte
+            # timestamp = f"{(((frame.timeStamp().seconds()*1000000 + frame.timeStamp().microSeconds()) // 1000)-self.boot_time):08X}" 
+            # sendable = bin(int(("9A" +payload + frameId + timestamp + "BB"), 16))[2:].zfill(36*4)
+            while (not msg_queue.empty()):
+                msg = msg_queue.get()
+                print(msg)
+            
+if __name__ == "__main__":
+    signal.signal(signal.SIGINT, signal.SIG_DFL) # allows to ^C out of project instead of ^/ core dumping
+    app = QCoreApplication(sys.argv)
+    s1 = Serial_receiver()
+    sys.exit(app.exec())

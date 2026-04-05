@@ -7,9 +7,9 @@
 import sys
 import signal
 import time
-from PySide6.QtSerialPort import QSerialPort, QSerialPortInfo
+import serial
 from PySide6.QtSerialBus import QCanBus, QCanBusDevice
-from PySide6.QtCore import QObject, Slot, QCoreApplication, QIODevice
+from PySide6.QtCore import QObject, Slot, QCoreApplication
 try:
     # for the server from the root directory
     from backend import global_vars as gv  
@@ -18,7 +18,7 @@ except (ImportError, ModuleNotFoundError):
     import global_vars as gv
     
 # Run this for your serial ports
-# socat -d -d pty,raw,echo=0 pty,raw,echo=0
+# sudo socat -d -d PTY,link=/dev/ttyV0 PTY,link=/dev/ttyV1
 
 # To test (linux pls):
 
@@ -36,49 +36,36 @@ class CANBus():
     
     # This is init it sets up our signal slot connection so we can receive msgs
     def __init__(self):
-        # Set up a CANBus device with socketcan for vcan0
-        # can be changed but rn want vcan0 for simulation tests
-        # if want real input then rly we are not using this file - will instead connect to the
-        # bike via arduino. Antenna will send msg thru to arduino we plug into computer and then
-        # that data will go thru to the backend and populate frontend
+        self.boot_time = time.time_ns() // 1000000 # in milliseconds
         self.device, self.error = QCanBus.instance().createDevice("socketcan", "vcan0")
         if self.device:
-            # now device must be connected
             if not self.device.connectDevice():
                 print("failed to initialise connection with device")
-            # This sets up a signal slot pair
-            ####### Set the program's start time in milliseconds to get approp for making 4 byte timestamps relative to bike ignition
             self.device.framesReceived.connect(self.frame_receiver)
-            # what this means is that whenever we receive a frame, we automatically have it handled by our frame_receiver
-            # no while loops needed and no busy waiting!
-            
-            # QSerialPort setup
-            self.ser = QSerialPort('/dev/pts/1')
-            self.ser.setBaudRate(115200)
-            
-            if (not self.ser.open(QIODevice.WriteOnly)):
-                print("nope")
+            try:
+                self.ser = serial.Serial('/dev/ttyV1', 115200, rtscts=True,dsrdtr=True)
+            except serial.SerialException as e:
+                print(e)
                 return
-            self.boot_time = time.time_ns() // 1000000 # in milliseconds
+            
+            
     # This func is called whenever we receive a frame
     @Slot()
     def frame_receiver(self):
         while self.device.framesAvailable():
             frame = self.device.readFrame()
-            # We get here so are receiving messages.
-            # print(frame.toString())
-            # print(f"{(frame.timeStamp().seconds()*1000000 + frame.timeStamp().microSeconds()):016X}") # 8 bytes of timestamp - could be 7
-            # print(f"{(((frame.timeStamp().seconds()*1000000 + frame.timeStamp().microSeconds()) // 1000)-self.boot_time):016X}") 
-            # get relative timestamp format and have it 4 Byte
-            # print(f"{frame.frameId():08X}")
-            # print(f"{int(frame.payload().toHex().toUpper().data().decode(), 16):016X}")
-            # example format of in msg - note we are infact getting this data in little endian (@1 on dbc file). Big Endian would be @0 but yeah
-            # little endian format - im not converting for now. If our results are not what we sent thru then will change 
-            # (defer if not sure necessary and then if necessary implement later otherwise dont)
+            #print(frame.toString())
+            #print(f"{(frame.timeStamp().seconds()*1000000 + frame.timeStamp().microSeconds()):016X}") # 8 bytes of timestamp - could be 7
+            #print(f"{(((frame.timeStamp().seconds()*1000000 + frame.timeStamp().microSeconds()) // 1000)-self.boot_time):016X}") 
+            #print(f"{frame.frameId():08X}")
+            #print(f"{int(frame.payload().toHex().toUpper().data().decode(), 16):016X}")
             frameId = f"{frame.frameId():08X}"
             payload = f"{int(frame.payload().toHex().toUpper().data().decode(), 16):016X}" # make this into 8byte
             timestamp = f"{(((frame.timeStamp().seconds()*1000000 + frame.timeStamp().microSeconds()) // 1000)-self.boot_time):08X}" 
-            sendable = bin(int(("9A" +payload + frameId + timestamp + "BB"), 16))[2:].zfill(36*4)
+            sendable = sendable = int(("9A" +payload + frameId + timestamp + "BB"), 16).to_bytes(18, byteorder='big')
+            print("9A" + payload + frameId + timestamp + "BB")
+            #print(sendable)
+            #print(type(sendable))
             self.ser.write(sendable)
             
             
