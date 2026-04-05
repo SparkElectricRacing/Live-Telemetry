@@ -58,7 +58,7 @@ class CANBus():
             
             if (not self.ser.open(QIODevice.WriteOnly)):
                 print("nope")
-                return 1
+                return
             self.boot_time = time.time_ns() // 1000000 # in milliseconds
     # This func is called whenever we receive a frame
     @Slot()
