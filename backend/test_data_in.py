@@ -7,9 +7,18 @@
 import sys
 import signal
 import time
-import serial # for writing our data to the backend of the Live-Telemetry project
+from PySide6.QtSerialPort import QSerialPort, QSerialPortInfo
 from PySide6.QtSerialBus import QCanBus, QCanBusDevice
-from PySide6.QtCore import QObject, Slot, QCoreApplication
+from PySide6.QtCore import QObject, Slot, QCoreApplication, QIODevice
+try:
+    # for the server from the root directory
+    from backend import global_vars as gv  
+except (ImportError, ModuleNotFoundError):
+    # for running arduino_reader.py directly for testing
+    import global_vars as gv
+    
+# Run this for your serial ports
+# socat -d -d pty,raw,echo=0 pty,raw,echo=0
 
 # To test (linux pls):
 
@@ -42,7 +51,14 @@ class CANBus():
             self.device.framesReceived.connect(self.frame_receiver)
             # what this means is that whenever we receive a frame, we automatically have it handled by our frame_receiver
             # no while loops needed and no busy waiting!
-            # self.ser = serial.Serial('/dev/ttyUSB0', baudrate=115200, timeout=None) # idk on port i just picked smth i saw online will fix
+            
+            # QSerialPort setup
+            self.ser = QSerialPort('/dev/pts/1')
+            self.ser.setBaudRate(115200)
+            
+            if (not self.ser.open(QIODevice.WriteOnly)):
+                print("nope")
+                return 1
             self.boot_time = time.time_ns() // 1000000 # in milliseconds
     # This func is called whenever we receive a frame
     @Slot()
@@ -61,16 +77,13 @@ class CANBus():
             # (defer if not sure necessary and then if necessary implement later otherwise dont)
             frameId = f"{frame.frameId():08X}"
             payload = f"{int(frame.payload().toHex().toUpper().data().decode(), 16):016X}" # make this into 8byte
-            # in milliseconds and relative to start time of the testing tool
             timestamp = f"{(((frame.timeStamp().seconds()*1000000 + frame.timeStamp().microSeconds()) // 1000)-self.boot_time):08X}" 
-            sendable = bin(int(("9A" +payload + frameId + timestamp + "BB"), 16))[2:].zfill(36*4) #18 bytes goal so 36 length * 4 for conversion
-            print(sendable)
-            print(len(sendable))
-            # ser.write(sendable)
+            sendable = bin(int(("9A" +payload + frameId + timestamp + "BB"), 16))[2:].zfill(36*4)
+            self.ser.write(sendable)
             
             
 if __name__ == "__main__":
-    signal.signal(signal.SIGINT, signal.SIG_DFL)
+    signal.signal(signal.SIGINT, signal.SIG_DFL) # allows to ^C out of project instead of ^/ core dumping
     app = QCoreApplication(sys.argv)
     c1 = CANBus()
     sys.exit(app.exec())
