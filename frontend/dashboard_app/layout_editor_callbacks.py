@@ -114,7 +114,7 @@ def register_layout_editor_callbacks(app):
         # Header Section
         editor_header = html.Div([
             html.H2("Layout Editor", className="editor-title"),
-            html.Button("💾 Export to settings.json", id="export-layout-btn", className="control-btn export-btn")
+            html.Button("💾 Export to settings.csv", id="export-layout-btn", className="control-btn export-btn")
         ], className="editor-header")
 
         editor_rows = []
@@ -164,7 +164,7 @@ def register_layout_editor_callbacks(app):
         return html.Div([editor_header] + editor_rows + [add_row_button], className="editor-container")
 
     @app.callback(
-        Output("download-layout-json", "data"),
+        Output("download-layout-csv", "data"),
         Input("export-layout-btn", "n_clicks"),
         State("layout-config-store", "data"),
         prevent_initial_call=True,
@@ -173,16 +173,19 @@ def register_layout_editor_callbacks(app):
         if n_clicks is None or ctx.triggered_id != 'export-layout-btn':
             return dash.no_update
         
-        # Format for export (as in your original file)
-        output_list = []
+        import io
+        import csv
+        output = io.StringIO()
+        writer = csv.writer(output)
         for row in layout_config.get('rows', []):
-            row_list = []
+            row_data = []
             for col in row.get('columns', []):
-                row_list.append([col.get('chart'), col.get('variable')])
-            output_list.append(row_list)
-        json_string = json.dumps(output_list, indent=4)
+                row_data.extend([col.get('chart'), col.get('variable')])
+            writer.writerow(row_data)
         
-        return dict(content=json_string, filename="settings.json")
+        csv_string = output.getvalue()
+        
+        return dict(content=csv_string, filename="settings.csv")
 
     @app.callback(
         Output('layout-config-store', 'data', allow_duplicate=True),

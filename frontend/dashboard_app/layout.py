@@ -360,7 +360,7 @@ def create_dashboard_layout():
         
         # --- NEW: Store and Download for Layout Editor ---
         dcc.Store(id='layout-config-store', data=initial_layout_config, storage_type='session'),
-        dcc.Download(id="download-layout-json"),
+        dcc.Download(id="download-layout-csv"),
     ], className="main-container"),
     html.Div(id="notification-sidebar", className="notification-sidebar", children=[
         html.H3("Notifications", className="sidebar-title"),
