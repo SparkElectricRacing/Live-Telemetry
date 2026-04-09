@@ -11,6 +11,8 @@ from queue import Queue
 from PySide6.QtSerialBus import QCanBus, QCanBusDevice, QCanBusFrame, QCanDbcFileParser, QCanFrameProcessor
 from PySide6.QtCore import QObject, Slot, QCoreApplication, QIODevice
 
+#TODO add latency recordings
+
 # FASTAPI app setup
 fastApp = FastAPI()
 # global updated dict that exists out of our serial processor
@@ -60,8 +62,9 @@ class Serial_receiver():
         self.frameProcessor = QCanFrameProcessor()
         self.frameProcessor.setUniqueIdDescription(QCanDbcFileParser.uniqueIdDescription())
         self.frameProcessor.setMessageDescriptions(self.dbcParser.messageDescriptions())
-        #get_uniqueId = "ID = [0-9]{1,4}"
-        #unique_id_num = "[0-9]{1,4}"
+        # using these regex expressions here
+        # get_uniqueId = "ID = [0-9]{1,4}"
+        # unique_id_num = "[0-9]{1,4}"
         self.id_to_transmitter = {}
         for md in self.dbcParser.messageDescriptions(): # im using regex because I cannot get uniqueId normally for some reason
             md_str = str(md)
@@ -75,13 +78,13 @@ class Serial_receiver():
             print(e)
             return
         self.boot_time = time.time_ns() // 1000000 # in milliseconds
-        while True: # criminal acitvities btw if you can make something that on in_waiting > 0 you trigger handler then do that
+        while True: # criminal acitvities btw if you can make something that on in_waiting >= 18 you trigger handler automatically then do that (no time.sleep)
             if self.ser.in_waiting >= 18:
                 # print("did i make it dad", self.ser.in_waiting)
                 bytes = (self.ser.in_waiting // (18)) * 18
                 # print("I made it dad", bytes)
                 self.handler(bytes)
-            time.sleep(0.005) 
+            time.sleep(0.01) 
     
     def handler(self, bits):
         # print('in handler')
