@@ -110,12 +110,13 @@ class Serial_receiver():
             frame.setTimeStamp(timestamp) # we do nothing with this - not sure if wanna keep for some latency test
             parseResult = self.frameProcessor.parseFrame(frame)
             signalValues = parseResult.signalValues
+            sender = next(iter(signalValues)).split('_')[0]
             if "INV_Motor_Speed" in signalValues:
                 signalValues["MPH_SPEED"] = mph_speed(signalValues["INV_Motor_Speed"])
                 signalValues["RPM_SPEED"] = rpm_speed(signalValues["INV_Motor_Speed"]) # currently * -1 unsure of correctness
             # Successfully gets to this point
             # IMPORTANT NOTE: GETS TIMESTAMP ON EACH DATA RECEIVE SO SOME MAY BE LOST
-            signalValues["RELATIVE_TIMESTAMP"] = int(msg[26:34], 16)
+            signalValues[f"{sender}_REL_TIMESTAMP"] = int(msg[26:34], 16)
             for sv in signalValues:
                 print(sv, ":", signalValues[sv])
                 
