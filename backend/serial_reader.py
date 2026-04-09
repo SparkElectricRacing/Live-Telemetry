@@ -5,9 +5,20 @@ import signal
 import sys
 import serial
 import re
+import threading
+from fastapi import FastAPI
 from queue import Queue
 from PySide6.QtSerialBus import QCanBus, QCanBusDevice, QCanBusFrame, QCanDbcFileParser, QCanFrameProcessor
 from PySide6.QtCore import QObject, Slot, QCoreApplication, QIODevice
+
+# FASTAPI app setup
+fastApp = FastAPI()
+# global updated dict that exists out of our serial processor
+latest_data = {}
+# keeps our program thread safe by protecting our critical secitons in which we update and send off our latest_data
+threading_lock = threading.Lock() 
+# if uncertain look into threads, mutexes, conditonal variables (EECS482 Operating Systems Content)
+# this is like the baby-mode version so should not be too bad :)
 
 # message should be 36 Hex digits cause 18B and first is 9A and last is BB
 # check A-F0-9
@@ -55,12 +66,12 @@ class Serial_receiver():
             return
         self.boot_time = time.time_ns() // 1000000 # in milliseconds
         while True: # criminal acitvities btw if you can make something that on in_waiting > 0 you trigger handler then do that
-            if self.ser.in_waiting:
+            if self.ser.in_waiting >= 18:
                 # print("did i make it dad", self.ser.in_waiting)
-                bits = (self.ser.in_waiting // (36)) * 36
-                # print("I made it dad", bits)
-                self.handler(bits)
-            time.sleep(0.01) 
+                bytes = (self.ser.in_waiting // (18)) * 18
+                # print("I made it dad", bytes)
+                self.handler(bytes)
+            time.sleep(0.005) 
     
     def handler(self, bits):
         # print('in handler')
@@ -68,48 +79,69 @@ class Serial_receiver():
         # print(self.buffer)
         # buffer is a string - so basically get buffer length
         buf_size = len(self.buffer)
-        if buf_size:
-            msgs = buf_size // (36)
-            remainder = buf_size % (36)
-            msg_queue = Queue()
-            for i in range(msgs):
-                msg_queue.put(self.buffer[i*36:(i+1)*36])
-            self.buffer = b''
-            
-            # now make a BUNCH of frames
-            # 1 + 8 + 4 + 4 + 1 but rn all are 8 bits a byte
-            # frameId = f"{frame.frameId():08X}"
-            # payload = f"{int(frame.payload().toHex().toUpper().data().decode(), 16):016X}" # make this into 8byte
-            # timestamp = f"{(((frame.timeStamp().seconds()*1000000 + frame.timeStamp().microSeconds()) // 1000)-self.boot_time):08X}" 
-            # sendable = bin(int(("9A" +payload + frameId + timestamp + "BB"), 16))[2:].zfill(36*4)
-            while (not msg_queue.empty()):
-                msg = msg_queue.get()
-                # check message in valid format
-                if not (re.search(msg_format_check, msg)):
-                    print("error in message format - possible corruption")
-                    continue
-                # "9A" + payload + frameId + timestamp + "BB" = 2 + 16 + 8 + 8 + 2
-                frame = QCanBusFrame()
-                frame.setFrameId(int(msg[18:26], 16))
-                frame.setPayload(int(msg[2:18], 16).to_bytes(8, byteorder='big'))
-                # timestamp currently relative
-                timestamp = QCanBusFrame.TimeStamp.fromMicroSeconds((self.boot_time + int(msg[26:34], 16))*1000)
-                frame.setTimeStamp(timestamp)
-                parseResult = self.frameProcessor.parseFrame(frame)
-                signalValues = parseResult.signalValues
-                if "INV_Motor_Speed" in signalValues:
-                    signalValues["MPH_SPEED"] = mph_speed(signalValues["INV_Motor_Speed"])
-                    signalValues["RPM_SPEED"] = rpm_speed(signalValues["INV_Motor_Speed"]) # currently * -1 unsure of correctness
-                # Successfully gets to this point
-                for sv in signalValues:
-                    print(sv, ":", signalValues[sv])
+        if not buf_size:
+            print("error - no buffer received")
+            return
+        msgs = buf_size // (36)
+        remainder = buf_size % (36)
+        msg_queue = Queue()
+        for i in range(msgs):
+            msg_queue.put(self.buffer[i*36:(i+1)*36])
+        self.buffer = b''
+        
+        # now make a BUNCH of frames
+        # 1 + 8 + 4 + 4 + 1 but rn all are 8 bits a byte
+        # frameId = f"{frame.frameId():08X}"
+        # payload = f"{int(frame.payload().toHex().toUpper().data().decode(), 16):016X}" # make this into 8byte
+        # timestamp = f"{(((frame.timeStamp().seconds()*1000000 + frame.timeStamp().microSeconds()) // 1000)-self.boot_time):08X}" 
+        # sendable = bin(int(("9A" +payload + frameId + timestamp + "BB"), 16))[2:].zfill(36*4)
+        while (not msg_queue.empty()):
+            msg = msg_queue.get()
+            # check message in valid format
+            if not (re.search(msg_format_check, msg)):
+                print("error in message format - possible corruption")
+                continue
+            # "9A" + payload + frameId + timestamp + "BB" = 2 + 16 + 8 + 8 + 2
+            frame = QCanBusFrame()
+            frame.setFrameId(int(msg[18:26], 16))
+            frame.setPayload(int(msg[2:18], 16).to_bytes(8, byteorder='big'))
+            # timestamp currently relative
+            timestamp = QCanBusFrame.TimeStamp.fromMicroSeconds((self.boot_time + int(msg[26:34], 16))*1000)
+            frame.setTimeStamp(timestamp) # we do nothing with this - not sure if wanna keep for some latency test
+            parseResult = self.frameProcessor.parseFrame(frame)
+            signalValues = parseResult.signalValues
+            if "INV_Motor_Speed" in signalValues:
+                signalValues["MPH_SPEED"] = mph_speed(signalValues["INV_Motor_Speed"])
+                signalValues["RPM_SPEED"] = rpm_speed(signalValues["INV_Motor_Speed"]) # currently * -1 unsure of correctness
+            # Successfully gets to this point
+            # IMPORTANT NOTE: GETS TIMESTAMP ON EACH DATA RECEIVE SO SOME MAY BE LOST
+            signalValues["RELATIVE_TIMESTAMP"] = int(msg[26:34], 16)
+            for sv in signalValues:
+                print(sv, ":", signalValues[sv])
+                
+            with threading_lock:
+                latest_data.update(signalValues)
                 
                 
+@fastApp.get("/data/receive/")
+def receive():
+    with threading_lock:
+        return latest_data.copy()
                 
-                
-            
+def backend_parent_thread():
+    try:
+        s1 = Serial_receiver()
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal.SIG_DFL) # allows to ^C out of project instead of ^/ core dumping
     app = QCoreApplication(sys.argv)
-    s1 = Serial_receiver()
+    try:
+        main_thread = threading.Thread(target=backend_parent_thread, daemon=True) # daemon means dies when main program dies
+        main_thread.start()
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
     sys.exit(app.exec())
