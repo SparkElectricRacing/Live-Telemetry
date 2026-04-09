@@ -18,7 +18,7 @@ except (ImportError, ModuleNotFoundError):
     import global_vars as gv
     
 # Run this for your serial ports
-# sudo socat -d -d PTY,link=/dev/ttyV0 PTY,link=/dev/ttyV1
+# sudo socat -dd PTY,link=/dev/ttyV0 PTY,link=/dev/ttyV1
 
 # To test (linux pls):
 

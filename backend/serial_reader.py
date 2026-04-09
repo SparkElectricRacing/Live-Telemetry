@@ -23,6 +23,8 @@ threading_lock = threading.Lock()
 # message should be 36 Hex digits cause 18B and first is 9A and last is BB
 # check A-F0-9
 msg_format_check = "^(9A|9a)[A-Fa-f0-9]{32}(BB|bb)$"
+get_uniqueId = "ID = [0-9]{1,4}"
+unique_id_num = "[0-9]{1,4}"
 
 # For Getting rpm_speed and mph_speed
 
@@ -58,6 +60,14 @@ class Serial_receiver():
         self.frameProcessor = QCanFrameProcessor()
         self.frameProcessor.setUniqueIdDescription(QCanDbcFileParser.uniqueIdDescription())
         self.frameProcessor.setMessageDescriptions(self.dbcParser.messageDescriptions())
+        #get_uniqueId = "ID = [0-9]{1,4}"
+        #unique_id_num = "[0-9]{1,4}"
+        self.id_to_transmitter = {}
+        for md in self.dbcParser.messageDescriptions(): # im using regex because I cannot get uniqueId normally for some reason
+            md_str = str(md)
+            match_id = int(str(re.search(unique_id_num,str(re.search(get_uniqueId, md_str).group(0))).group(0)))
+            match_transmitter = md.transmitter()
+            self.id_to_transmitter[match_id] = match_transmitter
         self.buffer = ''
         try:
             self.ser = serial.Serial('/dev/ttyV0', 115200, rtscts=True,dsrdtr=True)
@@ -110,13 +120,13 @@ class Serial_receiver():
             frame.setTimeStamp(timestamp) # we do nothing with this - not sure if wanna keep for some latency test
             parseResult = self.frameProcessor.parseFrame(frame)
             signalValues = parseResult.signalValues
-            sender = next(iter(signalValues)).split('_')[0]
+            sender = self.id_to_transmitter[frame.frameId()]
             if "INV_Motor_Speed" in signalValues:
                 signalValues["MPH_SPEED"] = mph_speed(signalValues["INV_Motor_Speed"])
                 signalValues["RPM_SPEED"] = rpm_speed(signalValues["INV_Motor_Speed"]) # currently * -1 unsure of correctness
             # Successfully gets to this point
             # IMPORTANT NOTE: GETS TIMESTAMP ON EACH DATA RECEIVE SO SOME MAY BE LOST
-            signalValues[f"{sender}_REL_TIMESTAMP"] = int(msg[26:34], 16)
+            signalValues[f"{sender}_TSMS"] = int(msg[26:34], 16) # relative timestamp in milliseconds
             for sv in signalValues:
                 print(sv, ":", signalValues[sv])
                 
