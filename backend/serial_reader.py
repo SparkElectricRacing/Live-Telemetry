@@ -4,9 +4,14 @@ import os
 import signal
 import sys
 import serial
+import re
 from queue import Queue
-from PySide6.QtSerialBus import QCanBus, QCanBusDevice, QCanBusFrame, QCanDbcFileParser
+from PySide6.QtSerialBus import QCanBus, QCanBusDevice, QCanBusFrame, QCanDbcFileParser, QCanFrameProcessor
 from PySide6.QtCore import QObject, Slot, QCoreApplication, QIODevice
+
+# message should be 36 Hex digits cause 18B and first is 9A and last is BB
+# check A-F0-9
+msg_format_check = "^(9A|9a)[A-Fa-f0-9]{32}(BB|bb)$"
 
 # For Getting rpm_speed and mph_speed
 
@@ -35,20 +40,27 @@ def mph_speed(rpm_speed): # Adapted from the google docs
 
 class Serial_receiver():
     def __init__(self):
+        self.dbcParser = QCanDbcFileParser()
+        
+        if not self.dbcParser.parse("static/20250206_CM_not_oil-cooled_CAN_DB.dbc"):
+            print("dbcfileparser failed to parse the file")
+        self.frameProcessor = QCanFrameProcessor()
+        self.frameProcessor.setUniqueIdDescription(QCanDbcFileParser.uniqueIdDescription())
+        self.frameProcessor.setMessageDescriptions(self.dbcParser.messageDescriptions())
         self.buffer = ''
         try:
             self.ser = serial.Serial('/dev/ttyV0', 115200, rtscts=True,dsrdtr=True)
         except serial.SerialException as e:
             print(e)
             return
-        while True:
+        self.boot_time = time.time_ns() // 1000000 # in milliseconds
+        while True: # criminal acitvities btw if you can make something that on in_waiting > 0 you trigger handler then do that
             if self.ser.in_waiting:
                 # print("did i make it dad", self.ser.in_waiting)
                 bits = (self.ser.in_waiting // (36)) * 36
                 # print("I made it dad", bits)
                 self.handler(bits)
             time.sleep(0.01) 
-            # criminal acitvities btw if you can make something that on in_waiting > 0 you trigger handler then do that
     
     def handler(self, bits):
         # print('in handler')
@@ -72,7 +84,29 @@ class Serial_receiver():
             # sendable = bin(int(("9A" +payload + frameId + timestamp + "BB"), 16))[2:].zfill(36*4)
             while (not msg_queue.empty()):
                 msg = msg_queue.get()
-                print(msg)
+                # check message in valid format
+                if not (re.search(msg_format_check, msg)):
+                    print("error in message format - possible corruption")
+                    continue
+                # "9A" + payload + frameId + timestamp + "BB" = 2 + 16 + 8 + 8 + 2
+                frame = QCanBusFrame()
+                frame.setFrameId(int(msg[18:26], 16))
+                frame.setPayload(int(msg[2:18], 16).to_bytes(8, byteorder='big'))
+                # timestamp currently relative
+                timestamp = QCanBusFrame.TimeStamp.fromMicroSeconds((self.boot_time + int(msg[26:34], 16))*1000)
+                frame.setTimeStamp(timestamp)
+                parseResult = self.frameProcessor.parseFrame(frame)
+                signalValues = parseResult.signalValues
+                if "INV_Motor_Speed" in signalValues:
+                    signalValues["MPH_SPEED"] = mph_speed(signalValues["INV_Motor_Speed"])
+                    signalValues["RPM_SPEED"] = rpm_speed(signalValues["INV_Motor_Speed"]) # currently * -1 unsure of correctness
+                # Successfully gets to this point
+                for sv in signalValues:
+                    print(sv, ":", signalValues[sv])
+                
+                
+                
+                
             
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal.SIG_DFL) # allows to ^C out of project instead of ^/ core dumping

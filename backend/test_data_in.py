@@ -62,7 +62,7 @@ class CANBus():
             frameId = f"{frame.frameId():08X}"
             payload = f"{int(frame.payload().toHex().toUpper().data().decode(), 16):016X}" # make this into 8byte
             timestamp = f"{(((frame.timeStamp().seconds()*1000000 + frame.timeStamp().microSeconds()) // 1000)-self.boot_time):08X}" 
-            sendable = sendable = int(("9A" +payload + frameId + timestamp + "BB"), 16).to_bytes(18, byteorder='big')
+            sendable = int(("9A" +payload + frameId + timestamp + "BB"), 16).to_bytes(18, byteorder='big')
             print("9A" + payload + frameId + timestamp + "BB")
             #print(sendable)
             #print(type(sendable))
